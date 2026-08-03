@@ -3,6 +3,7 @@
 build/
 captures/
 local.properties
+gradle/gradle-daemon-jvm.properties
 *.iml
 *.apk
 *.aab
@@ -12,4 +13,3 @@ local.properties
 *.hprof
 *.keystore
 *.jks
-

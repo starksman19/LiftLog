@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.liftlog.app.core.database.dao.ExerciseDao
+import com.liftlog.app.core.database.dao.WorkoutDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,8 +25,12 @@ object DatabaseModule {
         name = "liftlog.db",
     )
         .setDriver(BundledSQLiteDriver())
+        .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 
     @Provides
     fun provideExerciseDao(database: LiftLogDatabase): ExerciseDao = database.exerciseDao()
+
+    @Provides
+    fun provideWorkoutDao(database: LiftLogDatabase): WorkoutDao = database.workoutDao()
 }

@@ -22,6 +22,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.liftlog.app.feature.exercises.presentation.ExerciseListRoute
 import com.liftlog.app.feature.placeholder.PlaceholderScreen
+import com.liftlog.app.feature.workout.presentation.WorkoutRoute
 
 @Composable
 fun LiftLogApp() {
@@ -76,7 +77,7 @@ fun LiftLogApp() {
                 ExerciseListRoute()
             }
             composable(TopLevelDestination.Workout.route) {
-                PlaceholderScreen(title = "Workout")
+                WorkoutRoute()
             }
             composable(TopLevelDestination.Progress.route) {
                 PlaceholderScreen(title = "Progress")
@@ -98,4 +99,3 @@ private sealed class TopLevelDestination(
     data object Progress : TopLevelDestination("progress", "Progress", Icons.Outlined.Analytics)
     data object Settings : TopLevelDestination("settings", "Settings", Icons.Outlined.Settings)
 }
-

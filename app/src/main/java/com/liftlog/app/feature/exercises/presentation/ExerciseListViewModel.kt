@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.feature.exercises.domain.EnsureStarterExercisesUseCase
+import com.liftlog.app.feature.exercises.domain.AddCustomExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
 class ExerciseListViewModel @Inject constructor(
     observeExercisesUseCase: ObserveExercisesUseCase,
     private val ensureStarterExercisesUseCase: EnsureStarterExercisesUseCase,
+    private val addCustomExerciseUseCase: AddCustomExerciseUseCase,
 ) : ViewModel() {
     private val query = MutableStateFlow("")
 
@@ -49,10 +51,15 @@ class ExerciseListViewModel @Inject constructor(
     fun onSearchQueryChanged(value: String) {
         query.update { value }
     }
+
+    fun addCustomExercise(name: String, primaryMuscle: String, equipment: String) {
+        viewModelScope.launch {
+            addCustomExerciseUseCase(name, primaryMuscle, equipment)
+        }
+    }
 }
 
 data class ExerciseListUiState(
     val searchQuery: String = "",
     val exercises: List<Exercise> = emptyList(),
 )
-

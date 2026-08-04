@@ -17,8 +17,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,9 +28,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -52,7 +59,9 @@ fun WorkoutRoute(
         state = state,
         onStartWorkout = viewModel::startWorkout,
         onAddExercise = viewModel::addExercise,
-        onAddQuickSet = viewModel::addQuickSet,
+        onAddSet = viewModel::addSet,
+        onUpdateSet = viewModel::updateSet,
+        onDeleteSet = viewModel::deleteSet,
         onFinishWorkout = viewModel::finishWorkout,
         onDiscardWorkout = viewModel::discardWorkout,
     )
@@ -63,7 +72,9 @@ fun WorkoutScreen(
     state: WorkoutUiState,
     onStartWorkout: () -> Unit,
     onAddExercise: (Long) -> Unit,
-    onAddQuickSet: (Long) -> Unit,
+    onAddSet: (Long, Double, Int) -> Unit,
+    onUpdateSet: (Long, Double, Int) -> Unit,
+    onDeleteSet: (Long) -> Unit,
     onFinishWorkout: () -> Unit,
     onDiscardWorkout: () -> Unit,
     modifier: Modifier = Modifier,
@@ -80,7 +91,9 @@ fun WorkoutScreen(
             activeWorkout = activeWorkout,
             availableExercises = state.availableExercises,
             onAddExercise = onAddExercise,
-            onAddQuickSet = onAddQuickSet,
+            onAddSet = onAddSet,
+            onUpdateSet = onUpdateSet,
+            onDeleteSet = onDeleteSet,
             onFinishWorkout = onFinishWorkout,
             onDiscardWorkout = onDiscardWorkout,
             modifier = modifier,
@@ -124,7 +137,9 @@ private fun ActiveWorkoutScreen(
     activeWorkout: ActiveWorkout,
     availableExercises: List<Exercise>,
     onAddExercise: (Long) -> Unit,
-    onAddQuickSet: (Long) -> Unit,
+    onAddSet: (Long, Double, Int) -> Unit,
+    onUpdateSet: (Long, Double, Int) -> Unit,
+    onDeleteSet: (Long) -> Unit,
     onFinishWorkout: () -> Unit,
     onDiscardWorkout: () -> Unit,
     modifier: Modifier = Modifier,
@@ -203,7 +218,9 @@ private fun ActiveWorkoutScreen(
             ) { exercise ->
                 LoggedExerciseCard(
                     exercise = exercise,
-                    onAddQuickSet = { onAddQuickSet(exercise.id) },
+                    onAddSet = { weight, reps -> onAddSet(exercise.id, weight, reps) },
+                    onUpdateSet = onUpdateSet,
+                    onDeleteSet = onDeleteSet,
                 )
             }
         }
@@ -213,9 +230,14 @@ private fun ActiveWorkoutScreen(
 @Composable
 private fun LoggedExerciseCard(
     exercise: LoggedExercise,
-    onAddQuickSet: () -> Unit,
+    onAddSet: (Double, Int) -> Unit,
+    onUpdateSet: (Long, Double, Int) -> Unit,
+    onDeleteSet: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var editor by remember { mutableStateOf<SetEditor?>(null) }
+    var setPendingDeletion by remember { mutableStateOf<LoggedSet?>(null) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -245,7 +267,16 @@ private fun LoggedExerciseCard(
                     )
                 }
 
-                OutlinedButton(onClick = onAddQuickSet) {
+                OutlinedButton(
+                    onClick = {
+                        val previous = exercise.sets.lastOrNull()
+                        editor = SetEditor(
+                            setEntryId = null,
+                            initialWeight = previous?.weight ?: 0.0,
+                            initialReps = previous?.reps ?: 10,
+                        )
+                    },
+                ) {
                     Icon(
                         imageVector = Icons.Outlined.Add,
                         contentDescription = null,
@@ -265,15 +296,63 @@ private fun LoggedExerciseCard(
                 )
             } else {
                 exercise.sets.forEach { set ->
-                    SetRow(set = set)
+                    SetRow(
+                        set = set,
+                        onEdit = {
+                            editor = SetEditor(
+                                setEntryId = set.id,
+                                initialWeight = set.weight,
+                                initialReps = set.reps,
+                            )
+                        },
+                        onDelete = { setPendingDeletion = set },
+                    )
                 }
             }
         }
     }
+
+    editor?.let { currentEditor ->
+        SetEditorDialog(
+            editor = currentEditor,
+            onDismiss = { editor = null },
+            onSave = { weight, reps ->
+                if (currentEditor.setEntryId == null) {
+                    onAddSet(weight, reps)
+                } else {
+                    onUpdateSet(currentEditor.setEntryId, weight, reps)
+                }
+                editor = null
+            },
+        )
+    }
+
+    setPendingDeletion?.let { set ->
+        AlertDialog(
+            onDismissRequest = { setPendingDeletion = null },
+            title = { Text("Delete set?") },
+            text = { Text("Set ${set.setNumber} will be removed from this workout.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteSet(set.id)
+                        setPendingDeletion = null
+                    },
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { setPendingDeletion = null }) { Text("Cancel") }
+            },
+        )
+    }
 }
 
 @Composable
-private fun SetRow(set: LoggedSet) {
+private fun SetRow(
+    set: LoggedSet,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -283,13 +362,74 @@ private fun SetRow(set: LoggedSet) {
             text = "Set ${set.setNumber}",
             style = MaterialTheme.typography.bodyMedium,
         )
-        Text(
-            text = "${set.weight.clean()} kg x ${set.reps}",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "${set.weight.clean()} kg x ${set.reps}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Outlined.Edit, contentDescription = "Edit set")
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Outlined.Delete, contentDescription = "Delete set")
+            }
+        }
     }
 }
+
+@Composable
+private fun SetEditorDialog(
+    editor: SetEditor,
+    onDismiss: () -> Unit,
+    onSave: (Double, Int) -> Unit,
+) {
+    var weight by remember(editor) { mutableStateOf(editor.initialWeight.clean()) }
+    var reps by remember(editor) { mutableStateOf(editor.initialReps.toString()) }
+    val parsedWeight = weight.replace(',', '.').toDoubleOrNull()
+    val parsedReps = reps.toIntOrNull()
+    val isValid = parsedWeight != null && parsedWeight >= 0 && parsedReps != null && parsedReps > 0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (editor.setEntryId == null) "Add set" else "Edit set") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = weight,
+                    onValueChange = { weight = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Weight (kg)") },
+                    singleLine = true,
+                    isError = weight.isNotBlank() && (parsedWeight == null || parsedWeight < 0),
+                )
+                OutlinedTextField(
+                    value = reps,
+                    onValueChange = { reps = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Reps") },
+                    singleLine = true,
+                    isError = reps.isNotBlank() && (parsedReps == null || parsedReps <= 0),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(parsedWeight ?: 0.0, parsedReps ?: 1) },
+                enabled = isValid,
+            ) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+private data class SetEditor(
+    val setEntryId: Long?,
+    val initialWeight: Double,
+    val initialReps: Int,
+)
 
 private fun Double.clean(): String {
     return if (this % 1.0 == 0.0) {
@@ -330,10 +470,11 @@ private fun WorkoutScreenPreview() {
             ),
             onStartWorkout = {},
             onAddExercise = {},
-            onAddQuickSet = {},
+            onAddSet = { _, _, _ -> },
+            onUpdateSet = { _, _, _ -> },
+            onDeleteSet = {},
             onFinishWorkout = {},
             onDiscardWorkout = {},
         )
     }
 }
-

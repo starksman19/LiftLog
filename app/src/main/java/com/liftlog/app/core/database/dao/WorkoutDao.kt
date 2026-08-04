@@ -75,10 +75,28 @@ interface WorkoutDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertSetEntry(entity: SetEntryEntity): Long
 
+    @Query(
+        """
+        UPDATE set_entries
+        SET weight = :weight,
+            reps = :reps,
+            completedAtEpochMillis = :completedAtEpochMillis
+        WHERE id = :setEntryId
+        """,
+    )
+    suspend fun updateSetEntry(
+        setEntryId: Long,
+        weight: Double,
+        reps: Int,
+        completedAtEpochMillis: Long,
+    )
+
+    @Query("DELETE FROM set_entries WHERE id = :setEntryId")
+    suspend fun deleteSetEntry(setEntryId: Long)
+
     @Query("UPDATE workout_sessions SET finishedAtEpochMillis = :finishedAtEpochMillis WHERE id = :workoutSessionId")
     suspend fun finishWorkout(workoutSessionId: Long, finishedAtEpochMillis: Long)
 
     @Query("DELETE FROM workout_sessions WHERE id = :workoutSessionId")
     suspend fun deleteWorkout(workoutSessionId: Long)
 }
-

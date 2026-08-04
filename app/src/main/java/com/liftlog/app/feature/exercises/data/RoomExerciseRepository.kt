@@ -35,6 +35,18 @@ class RoomExerciseRepository @Inject constructor(
         }
     }
 
+    override suspend fun addCustomExercise(name: String, primaryMuscle: String, equipment: String) {
+        exerciseDao.insertExerciseWithSearch(
+            ExerciseEntity(
+                name = name,
+                primaryMuscle = primaryMuscle,
+                equipment = equipment,
+                isCustom = true,
+                createdAtEpochMillis = System.currentTimeMillis(),
+            ),
+        )
+    }
+
     private fun String.toFtsQuery(): String? {
         val tokens = trim()
             .split(Regex("\\s+"))
@@ -99,4 +111,3 @@ class RoomExerciseRepository @Inject constructor(
         )
     }
 }
-

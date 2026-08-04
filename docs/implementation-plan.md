@@ -2,7 +2,7 @@
 
 ## Product direction
 
-LiftLog starts as an offline-first gym progress tracker. The first version should make the core workout flow fast: find an exercise, log sets, review history and see basic progress.
+LiftLog starts as an offline-first gym progress tracker. The first version should make the core workout flow fast: find an exercise, log sets, review history and see basic progress. The first screen is the progress dashboard, so the latest training trend is visible immediately after opening the app.
 
 ## MVP milestones
 
@@ -31,7 +31,9 @@ LiftLog starts as an offline-first gym progress tracker. The first version shoul
 
 - Show estimated volume per exercise.
 - Show personal bests by weight, reps and total volume.
-- Add simple charts after the data model is stable.
+- Make Progress the app's start screen.
+- Show a compact training-volume chart at the top of the dashboard.
+- Show exercise trend, personal bests by weight, reps and total volume.
 
 ### 5. Templates
 
@@ -43,7 +45,9 @@ LiftLog starts as an offline-first gym progress tracker. The first version shoul
 
 - Toggle kg/lb.
 - Configure default rest time.
-- Export local data to JSON or CSV.
+- Export all local data and settings to a versioned JSON backup.
+- Import a LiftLog backup through the Android document picker, with a clear replace-data confirmation.
+- Keep the backup format independent from the database implementation so it can later support cloud sync.
 
 ## Architecture rules
 
@@ -55,14 +59,18 @@ LiftLog starts as an offline-first gym progress tracker. The first version shoul
 - DataStore stores small preferences.
 - Cloud sync should be added later behind repository interfaces.
 
-## Next implementation slice
+## Implementation order
 
-The next code slice is workout logging foundation:
+1. Finish workout logging: editable sets, deleting sets and safe validation.
+2. Add progress queries, dashboard statistics and the compact dashboard chart.
+3. Add exercise history and detail screen.
+4. Add templates for repeatable workouts.
+5. Add settings, versioned JSON export/import and backup validation.
+6. Add focused tests for volume calculations, progress aggregation and backup parsing.
 
-- `WorkoutSession`
-- `WorkoutExercise`
-- `SetEntry`
-- Room DAO queries for active workout state
-- repository and use cases
-- basic Workout screen with start and active-state UI
+## Data transfer contract
 
+- A backup contains exercises, workout sessions, workout exercises, set entries and settings.
+- IDs are retained inside the backup so all relationships remain valid after restoring on another phone.
+- Import replaces local LiftLog data only after the user confirms it in the UI.
+- A backup includes a format version and is rejected when it is unsupported or malformed.

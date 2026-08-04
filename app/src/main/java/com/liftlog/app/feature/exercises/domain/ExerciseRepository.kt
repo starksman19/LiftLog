@@ -6,5 +6,5 @@ import kotlinx.coroutines.flow.Flow
 interface ExerciseRepository {
     fun observeExercises(query: String): Flow<List<Exercise>>
     suspend fun ensureStarterExercises()
+    suspend fun addCustomExercise(name: String, primaryMuscle: String, equipment: String)
 }
-

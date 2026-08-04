@@ -9,9 +9,11 @@ import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
 import com.liftlog.app.feature.workout.domain.AddExerciseToActiveWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.AddSetUseCase
 import com.liftlog.app.feature.workout.domain.DiscardWorkoutUseCase
+import com.liftlog.app.feature.workout.domain.DeleteSetUseCase
 import com.liftlog.app.feature.workout.domain.FinishWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.ObserveActiveWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.StartWorkoutUseCase
+import com.liftlog.app.feature.workout.domain.UpdateSetUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,6 +30,8 @@ class WorkoutViewModel @Inject constructor(
     private val startWorkoutUseCase: StartWorkoutUseCase,
     private val addExerciseToActiveWorkoutUseCase: AddExerciseToActiveWorkoutUseCase,
     private val addSetUseCase: AddSetUseCase,
+    private val updateSetUseCase: UpdateSetUseCase,
+    private val deleteSetUseCase: DeleteSetUseCase,
     private val finishWorkoutUseCase: FinishWorkoutUseCase,
     private val discardWorkoutUseCase: DiscardWorkoutUseCase,
 ) : ViewModel() {
@@ -64,19 +68,25 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
-    fun addQuickSet(workoutExerciseId: Long) {
+    fun addSet(workoutExerciseId: Long, weight: Double, reps: Int) {
         viewModelScope.launch {
-            val loggedExercise = uiState.value.activeWorkout
-                ?.exercises
-                ?.firstOrNull { it.id == workoutExerciseId }
-                ?: return@launch
-            val previousSet = loggedExercise.sets.lastOrNull()
-
             addSetUseCase(
                 workoutExerciseId = workoutExerciseId,
-                weight = previousSet?.weight ?: 0.0,
-                reps = previousSet?.reps ?: 10,
+                weight = weight,
+                reps = reps,
             )
+        }
+    }
+
+    fun updateSet(setEntryId: Long, weight: Double, reps: Int) {
+        viewModelScope.launch {
+            updateSetUseCase(setEntryId, weight, reps)
+        }
+    }
+
+    fun deleteSet(setEntryId: Long) {
+        viewModelScope.launch {
+            deleteSetUseCase(setEntryId)
         }
     }
 
@@ -97,4 +107,3 @@ data class WorkoutUiState(
     val activeWorkout: ActiveWorkout? = null,
     val availableExercises: List<Exercise> = emptyList(),
 )
-

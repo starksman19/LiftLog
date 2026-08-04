@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.liftlog.app.core.database.dao.ExerciseDao
+import com.liftlog.app.core.database.dao.BackupDao
+import com.liftlog.app.core.database.dao.ProgressDao
 import com.liftlog.app.core.database.dao.WorkoutDao
 import dagger.Module
 import dagger.Provides
@@ -30,6 +32,12 @@ object DatabaseModule {
 
     @Provides
     fun provideExerciseDao(database: LiftLogDatabase): ExerciseDao = database.exerciseDao()
+
+    @Provides
+    fun provideBackupDao(database: LiftLogDatabase): BackupDao = database.backupDao()
+
+    @Provides
+    fun provideProgressDao(database: LiftLogDatabase): ProgressDao = database.progressDao()
 
     @Provides
     fun provideWorkoutDao(database: LiftLogDatabase): WorkoutDao = database.workoutDao()

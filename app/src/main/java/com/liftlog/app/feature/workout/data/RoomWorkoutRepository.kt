@@ -86,6 +86,22 @@ class RoomWorkoutRepository @Inject constructor(
         )
     }
 
+    override suspend fun updateSet(setEntryId: Long, weight: Double, reps: Int) {
+        require(weight >= 0) { "Weight cannot be negative." }
+        require(reps > 0) { "Reps must be greater than zero." }
+
+        workoutDao.updateSetEntry(
+            setEntryId = setEntryId,
+            weight = weight,
+            reps = reps,
+            completedAtEpochMillis = System.currentTimeMillis(),
+        )
+    }
+
+    override suspend fun deleteSet(setEntryId: Long) {
+        workoutDao.deleteSetEntry(setEntryId)
+    }
+
     override suspend fun finishActiveWorkout() {
         val workoutSessionId = workoutDao.getActiveSessionId() ?: return
         workoutDao.finishWorkout(
@@ -131,4 +147,3 @@ class RoomWorkoutRepository @Inject constructor(
         )
     }
 }
-

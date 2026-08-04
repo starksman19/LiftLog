@@ -22,6 +22,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.liftlog.app.feature.exercises.presentation.ExerciseListRoute
 import com.liftlog.app.feature.placeholder.PlaceholderScreen
+import com.liftlog.app.feature.progress.presentation.ProgressRoute
+import com.liftlog.app.feature.settings.presentation.SettingsRoute
 import com.liftlog.app.feature.workout.presentation.WorkoutRoute
 
 @Composable
@@ -70,7 +72,7 @@ fun LiftLogApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = TopLevelDestination.Exercises.route,
+            startDestination = TopLevelDestination.Progress.route,
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(TopLevelDestination.Exercises.route) {
@@ -80,10 +82,10 @@ fun LiftLogApp() {
                 WorkoutRoute()
             }
             composable(TopLevelDestination.Progress.route) {
-                PlaceholderScreen(title = "Progress")
+                ProgressRoute()
             }
             composable(TopLevelDestination.Settings.route) {
-                PlaceholderScreen(title = "Settings")
+                SettingsRoute()
             }
         }
     }

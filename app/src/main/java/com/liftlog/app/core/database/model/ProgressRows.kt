@@ -14,3 +14,12 @@ data class ExerciseProgressRow(
     val totalVolume: Double,
     val workoutCount: Int,
 )
+
+data class ExerciseHistoryRow(
+    val workoutSessionId: Long,
+    val finishedAtEpochMillis: Long,
+    val setEntryId: Long,
+    val setNumber: Int,
+    val weight: Double,
+    val reps: Int,
+)

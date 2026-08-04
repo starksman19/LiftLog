@@ -3,6 +3,7 @@ package com.liftlog.app.feature.progress.data
 import com.liftlog.app.core.database.dao.ProgressDao
 import com.liftlog.app.core.model.ExerciseProgress
 import com.liftlog.app.core.model.SessionVolume
+import com.liftlog.app.core.model.HistoricalSet
 import com.liftlog.app.feature.progress.domain.ProgressRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,6 +36,21 @@ class RoomProgressRepository @Inject constructor(
                     maxReps = row.maxReps,
                     totalVolume = row.totalVolume,
                     workoutCount = row.workoutCount,
+                )
+            }
+        }
+    }
+
+    override fun observeExerciseHistory(exerciseId: Long): Flow<List<HistoricalSet>> {
+        return progressDao.observeExerciseHistory(exerciseId).map { rows ->
+            rows.map { row ->
+                HistoricalSet(
+                    workoutSessionId = row.workoutSessionId,
+                    finishedAtEpochMillis = row.finishedAtEpochMillis,
+                    setEntryId = row.setEntryId,
+                    setNumber = row.setNumber,
+                    weight = row.weight,
+                    reps = row.reps,
                 )
             }
         }

@@ -3,6 +3,7 @@ package com.liftlog.app.core.database.dao
 import androidx.room3.Dao
 import androidx.room3.Query
 import com.liftlog.app.core.database.model.ExerciseProgressRow
+import com.liftlog.app.core.database.model.ExerciseHistoryRow
 import com.liftlog.app.core.database.model.SessionVolumeRow
 import kotlinx.coroutines.flow.Flow
 
@@ -42,4 +43,22 @@ interface ProgressDao {
         """,
     )
     fun observeExerciseProgress(): Flow<List<ExerciseProgressRow>>
+
+    @Query(
+        """
+        SELECT ws.id AS workoutSessionId,
+               ws.finishedAtEpochMillis AS finishedAtEpochMillis,
+               se.id AS setEntryId,
+               se.setNumber AS setNumber,
+               se.weight AS weight,
+               se.reps AS reps
+        FROM workout_sessions AS ws
+        JOIN workout_exercises AS we ON we.workoutSessionId = ws.id
+        JOIN set_entries AS se ON se.workoutExerciseId = we.id
+        WHERE ws.finishedAtEpochMillis IS NOT NULL
+          AND we.exerciseId = :exerciseId
+        ORDER BY ws.finishedAtEpochMillis DESC, se.setNumber ASC
+        """,
+    )
+    fun observeExerciseHistory(exerciseId: Long): Flow<List<ExerciseHistoryRow>>
 }

@@ -16,6 +16,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -23,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import com.liftlog.app.feature.exercises.presentation.ExerciseListRoute
 import com.liftlog.app.feature.placeholder.PlaceholderScreen
 import com.liftlog.app.feature.progress.presentation.ProgressRoute
+import com.liftlog.app.feature.progress.presentation.ExerciseHistoryRoute
 import com.liftlog.app.feature.settings.presentation.SettingsRoute
 import com.liftlog.app.feature.workout.presentation.WorkoutRoute
 
@@ -76,7 +79,11 @@ fun LiftLogApp() {
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(TopLevelDestination.Exercises.route) {
-                ExerciseListRoute()
+                ExerciseListRoute(
+                    onExerciseSelected = { exerciseId ->
+                        navController.navigate("exercise/$exerciseId")
+                    },
+                )
             }
             composable(TopLevelDestination.Workout.route) {
                 WorkoutRoute()
@@ -86,6 +93,15 @@ fun LiftLogApp() {
             }
             composable(TopLevelDestination.Settings.route) {
                 SettingsRoute()
+            }
+            composable(
+                route = "exercise/{exerciseId}",
+                arguments = listOf(navArgument("exerciseId") { type = NavType.LongType }),
+            ) { entry ->
+                ExerciseHistoryRoute(
+                    exerciseId = entry.arguments?.getLong("exerciseId") ?: return@composable,
+                    onBack = navController::navigateUp,
+                )
             }
         }
     }

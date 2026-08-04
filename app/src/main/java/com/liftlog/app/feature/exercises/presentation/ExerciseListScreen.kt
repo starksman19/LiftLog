@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -41,6 +42,7 @@ import com.liftlog.app.core.ui.theme.LiftLogTheme
 
 @Composable
 fun ExerciseListRoute(
+    onExerciseSelected: (Long) -> Unit,
     viewModel: ExerciseListViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -49,6 +51,7 @@ fun ExerciseListRoute(
         state = state,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onAddCustomExercise = viewModel::addCustomExercise,
+        onExerciseSelected = onExerciseSelected,
     )
 }
 
@@ -58,6 +61,7 @@ fun ExerciseListScreen(
     state: ExerciseListUiState,
     onSearchQueryChanged: (String) -> Unit,
     onAddCustomExercise: (String, String, String) -> Unit,
+    onExerciseSelected: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var addDialogVisible by remember { mutableStateOf(false) }
@@ -113,7 +117,10 @@ fun ExerciseListScreen(
                     items = state.exercises,
                     key = { exercise -> exercise.id },
                 ) { exercise ->
-                    ExerciseCard(exercise = exercise)
+                    ExerciseCard(
+                        exercise = exercise,
+                        onClick = { onExerciseSelected(exercise.id) },
+                    )
                 }
             }
         }
@@ -183,10 +190,13 @@ private fun CustomExerciseDialog(
 @Composable
 private fun ExerciseCard(
     exercise: Exercise,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -248,6 +258,7 @@ private fun ExerciseListScreenPreview() {
             ),
             onSearchQueryChanged = {},
             onAddCustomExercise = { _, _, _ -> },
+            onExerciseSelected = {},
         )
     }
 }

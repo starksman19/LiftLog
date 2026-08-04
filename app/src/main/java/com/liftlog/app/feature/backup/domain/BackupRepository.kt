@@ -15,6 +15,7 @@ enum class BackupSection(val label: String) {
     WorkoutSessions("Workouts"),
     WorkoutExercises("Exercises in workouts"),
     SetEntries("Sets"),
+    WorkoutTemplates("Workout templates"),
 }
 
 data class BackupSelection(
@@ -23,6 +24,7 @@ data class BackupSelection(
     val workoutSessions: Boolean = true,
     val workoutExercises: Boolean = true,
     val setEntries: Boolean = true,
+    val workoutTemplates: Boolean = true,
 ) {
     fun includes(section: BackupSection): Boolean = when (section) {
         BackupSection.Settings -> settings
@@ -30,6 +32,7 @@ data class BackupSelection(
         BackupSection.WorkoutSessions -> workoutSessions
         BackupSection.WorkoutExercises -> workoutExercises
         BackupSection.SetEntries -> setEntries
+        BackupSection.WorkoutTemplates -> workoutTemplates
     }
 
     fun toggled(section: BackupSection, enabled: Boolean): BackupSelection {
@@ -40,6 +43,7 @@ data class BackupSelection(
                 workoutSessions = false,
                 workoutExercises = false,
                 setEntries = false,
+                workoutTemplates = false,
             )
             BackupSection.WorkoutSessions -> if (enabled) copy(workoutSessions = true) else copy(
                 workoutSessions = false,
@@ -56,13 +60,16 @@ data class BackupSelection(
                 workoutExercises = false,
                 setEntries = false,
             )
+            BackupSection.WorkoutTemplates -> if (enabled) copy(workoutTemplates = true) else copy(
+                workoutTemplates = false,
+            )
         }
         return updated.normalized()
     }
 
     fun normalized(): BackupSelection {
         val needsWorkoutData = workoutSessions || workoutExercises || setEntries
-        val needsExercises = exercises || needsWorkoutData
+        val needsExercises = exercises || needsWorkoutData || workoutTemplates
         return copy(
             exercises = needsExercises,
             workoutSessions = needsWorkoutData,
@@ -71,7 +78,7 @@ data class BackupSelection(
         )
     }
 
-    fun hasAnySelection(): Boolean = settings || exercises || workoutSessions || workoutExercises || setEntries
+    fun hasAnySelection(): Boolean = settings || exercises || workoutSessions || workoutExercises || setEntries || workoutTemplates
 
     fun hasWorkoutData(): Boolean = workoutSessions || workoutExercises || setEntries
 
@@ -90,6 +97,7 @@ data class BackupSummary(
     val workouts: Int = 0,
     val workoutExercises: Int = 0,
     val sets: Int = 0,
+    val templates: Int = 0,
 )
 
 class ExportBackupUseCase @Inject constructor(

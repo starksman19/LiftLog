@@ -28,7 +28,7 @@ object DatabaseModule {
         name = "liftlog.db",
     )
         .setDriver(BundledSQLiteDriver())
-        .fallbackToDestructiveMigration(dropAllTables = true)
+        .addMigrations(DatabaseMigrations.Migration2To3)
         .build()
 
     @Provides

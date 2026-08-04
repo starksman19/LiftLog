@@ -3,6 +3,7 @@ package com.liftlog.app.feature.exercises.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liftlog.app.core.model.Exercise
+import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.feature.exercises.domain.EnsureStarterExercisesUseCase
 import com.liftlog.app.feature.exercises.domain.AddCustomExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
@@ -52,9 +53,9 @@ class ExerciseListViewModel @Inject constructor(
         query.update { value }
     }
 
-    fun addCustomExercise(name: String, primaryMuscle: String, equipment: String) {
+    fun addCustomExercise(draft: ExerciseDraft) {
         viewModelScope.launch {
-            addCustomExerciseUseCase(name, primaryMuscle, equipment)
+            addCustomExerciseUseCase(draft)
         }
     }
 }

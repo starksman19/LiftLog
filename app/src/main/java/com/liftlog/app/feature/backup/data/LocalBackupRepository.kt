@@ -62,5 +62,6 @@ class LocalBackupRepository @Inject constructor(
         workouts = snapshot.workoutSessions.size,
         workoutExercises = snapshot.workoutExercises.size,
         sets = snapshot.setEntries.size,
+        templates = snapshot.workoutTemplates.size,
     )
 }

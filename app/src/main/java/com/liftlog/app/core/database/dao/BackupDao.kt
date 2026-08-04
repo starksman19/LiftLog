@@ -10,6 +10,8 @@ import com.liftlog.app.core.database.entity.ExerciseSearchEntity
 import com.liftlog.app.core.database.entity.SetEntryEntity
 import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplateEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
 import com.liftlog.app.core.database.entity.toSearchEntity
 import com.liftlog.app.core.database.model.DatabaseSnapshot
 
@@ -26,6 +28,12 @@ interface BackupDao {
 
     @Query("SELECT * FROM set_entries ORDER BY id")
     suspend fun getSetEntries(): List<SetEntryEntity>
+
+    @Query("SELECT * FROM workout_templates ORDER BY id")
+    suspend fun getWorkoutTemplates(): List<WorkoutTemplateEntity>
+
+    @Query("SELECT * FROM workout_template_exercises ORDER BY id")
+    suspend fun getWorkoutTemplateExercises(): List<WorkoutTemplateExerciseEntity>
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertExercises(entities: List<ExerciseEntity>)
@@ -45,6 +53,12 @@ interface BackupDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertSetEntries(entities: List<SetEntryEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertWorkoutTemplate(template: WorkoutTemplateEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertWorkoutTemplateExercises(entities: List<WorkoutTemplateExerciseEntity>)
+
     @Query("DELETE FROM set_entries")
     suspend fun clearSetEntries()
 
@@ -62,6 +76,15 @@ interface BackupDao {
 
     @Query("DELETE FROM exercises")
     suspend fun clearExercises()
+
+    @Query("DELETE FROM workout_templates")
+    suspend fun clearWorkoutTemplates()
+
+    @Query("DELETE FROM workout_template_exercises WHERE templateId = :templateId")
+    suspend fun clearWorkoutTemplateExercises(templateId: Long)
+
+    @Query("SELECT id FROM workout_templates WHERE name = :name COLLATE NOCASE LIMIT 1")
+    suspend fun findTemplateId(name: String): Long?
 
     @Query(
         """
@@ -109,6 +132,8 @@ interface BackupDao {
         workoutSessions = getWorkoutSessions(),
         workoutExercises = getWorkoutExercises(),
         setEntries = getSetEntries(),
+        workoutTemplates = getWorkoutTemplates(),
+        workoutTemplateExercises = getWorkoutTemplateExercises(),
     )
 
     @Transaction
@@ -116,6 +141,7 @@ interface BackupDao {
         clearSetEntries()
         clearWorkoutExercises()
         clearWorkoutSessions()
+        clearWorkoutTemplates()
         clearExerciseSearch()
         clearExercises()
 
@@ -126,6 +152,7 @@ interface BackupDao {
         if (snapshot.workoutSessions.isNotEmpty()) insertWorkoutSessions(snapshot.workoutSessions)
         if (snapshot.workoutExercises.isNotEmpty()) insertWorkoutExercises(snapshot.workoutExercises)
         if (snapshot.setEntries.isNotEmpty()) insertSetEntries(snapshot.setEntries)
+        if (snapshot.workoutTemplates.isNotEmpty()) insertWorkoutTemplates(snapshot)
     }
 
     @Transaction
@@ -172,5 +199,26 @@ interface BackupDao {
             )
         }
         if (snapshot.setEntries.isNotEmpty()) insertSetEntries(snapshot.setEntries)
+        if (snapshot.workoutTemplates.isNotEmpty()) insertWorkoutTemplates(snapshot, importedToLocalExerciseIds)
+    }
+
+    private suspend fun insertWorkoutTemplates(
+        snapshot: DatabaseSnapshot,
+        importedToLocalExerciseIds: Map<Long, Long> = snapshot.exercises.associate { it.id to it.id },
+    ) {
+        val importedTemplateExercises = snapshot.workoutTemplateExercises.groupBy { it.templateId }
+        for (template in snapshot.workoutTemplates) {
+            val localTemplateId = findTemplateId(template.name)
+                ?: insertWorkoutTemplate(template.copy(id = 0))
+            if (findTemplateId(template.name) != null) clearWorkoutTemplateExercises(localTemplateId)
+            val exercises = importedTemplateExercises[template.id].orEmpty().map { templateExercise ->
+                templateExercise.copy(
+                    id = 0,
+                    templateId = localTemplateId,
+                    exerciseId = checkNotNull(importedToLocalExerciseIds[templateExercise.exerciseId]),
+                )
+            }
+            if (exercises.isNotEmpty()) insertWorkoutTemplateExercises(exercises)
+        }
     }
 }

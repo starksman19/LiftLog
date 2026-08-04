@@ -29,6 +29,23 @@ class BackupSelectionTest {
         assertFalse(selection.workoutSessions)
         assertFalse(selection.workoutExercises)
         assertFalse(selection.setEntries)
+        assertFalse(selection.workoutTemplates)
         assertTrue(selection.settings)
+    }
+
+    @Test
+    fun `selecting a template includes exercises`() {
+        val selection = BackupSelection(
+            settings = false,
+            exercises = false,
+            workoutSessions = false,
+            workoutExercises = false,
+            setEntries = false,
+            workoutTemplates = false,
+        ).toggled(BackupSection.WorkoutTemplates, true)
+
+        assertTrue(selection.exercises)
+        assertTrue(selection.workoutTemplates)
+        assertFalse(selection.hasWorkoutData())
     }
 }

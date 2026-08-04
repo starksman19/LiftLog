@@ -83,6 +83,16 @@ interface WorkoutDao {
     )
     suspend fun getRecentExercisePerformances(exerciseId: Long): List<RecentExercisePerformanceRow>
 
+    @Query(
+        """
+        SELECT exerciseId
+        FROM workout_exercises
+        WHERE workoutSessionId = :workoutSessionId
+        ORDER BY orderIndex, id
+        """,
+    )
+    suspend fun getExerciseIdsForWorkout(workoutSessionId: Long): List<Long>
+
     @Query("SELECT COALESCE(MAX(orderIndex), -1) + 1 FROM workout_exercises WHERE workoutSessionId = :workoutSessionId")
     suspend fun getNextExerciseOrder(workoutSessionId: Long): Int
 

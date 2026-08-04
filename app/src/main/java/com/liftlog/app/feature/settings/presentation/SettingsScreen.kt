@@ -186,7 +186,7 @@ fun SettingsScreen(
                         .filter(preview.contents.selection::includes)
                         .forEach { section -> Text(section.label) }
                     Text(
-                        text = "${preview.contents.summary.exercises} exercises, ${preview.contents.summary.workouts} workouts, ${preview.contents.summary.sets} sets",
+                        text = "${preview.contents.summary.exercises} exercises, ${preview.contents.summary.workouts} workouts, ${preview.contents.summary.sets} sets, ${preview.contents.summary.templates} templates",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

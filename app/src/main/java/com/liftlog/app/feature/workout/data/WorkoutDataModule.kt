@@ -1,6 +1,7 @@
 package com.liftlog.app.feature.workout.data
 
 import com.liftlog.app.feature.workout.domain.WorkoutRepository
+import com.liftlog.app.feature.workout.domain.WorkoutTemplateRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -15,5 +16,10 @@ abstract class WorkoutDataModule {
     abstract fun bindWorkoutRepository(
         repository: RoomWorkoutRepository,
     ): WorkoutRepository
-}
 
+    @Binds
+    @Singleton
+    abstract fun bindWorkoutTemplateRepository(
+        repository: RoomWorkoutTemplateRepository,
+    ): WorkoutTemplateRepository
+}

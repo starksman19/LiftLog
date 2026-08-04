@@ -8,6 +8,7 @@ import com.liftlog.app.core.database.model.WorkoutExerciseRow
 import com.liftlog.app.core.model.ActiveWorkout
 import com.liftlog.app.core.model.LoggedExercise
 import com.liftlog.app.core.model.LoggedSet
+import com.liftlog.app.core.model.RecentExercisePerformance
 import com.liftlog.app.feature.workout.domain.WorkoutRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -48,14 +49,33 @@ class RoomWorkoutRepository @Inject constructor(
         }
     }
 
-    override suspend fun startWorkout() {
+    override suspend fun startWorkout(gymLocation: String?) {
         if (workoutDao.getActiveSessionId() != null) return
 
         workoutDao.insertWorkoutSession(
             WorkoutSessionEntity(
                 startedAtEpochMillis = System.currentTimeMillis(),
+                gymLocation = gymLocation?.trim()?.takeIf { it.isNotEmpty() },
             ),
         )
+    }
+
+    override suspend fun getRecentExercisePerformances(exerciseId: Long): List<RecentExercisePerformance> {
+        return workoutDao.getRecentExercisePerformances(exerciseId)
+            .groupBy { it.finishedAtEpochMillis }
+            .map { (finishedAt, rows) ->
+                RecentExercisePerformance(
+                    finishedAtEpochMillis = finishedAt,
+                    sets = rows.map { row ->
+                        LoggedSet(
+                            id = 0,
+                            setNumber = row.setNumber,
+                            weight = row.weight,
+                            reps = row.reps,
+                        )
+                    },
+                )
+            }
     }
 
     override suspend fun addExerciseToActiveWorkout(exerciseId: Long, notes: String?) {

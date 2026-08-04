@@ -4,8 +4,11 @@ import com.liftlog.app.core.database.entity.ExerciseEntity
 import com.liftlog.app.core.database.entity.SetEntryEntity
 import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplateEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
 import com.liftlog.app.core.database.model.DatabaseSnapshot
 import com.liftlog.app.core.model.AppSettings
+import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.WeightUnit
 import com.liftlog.app.feature.backup.domain.BackupSection
 import com.liftlog.app.feature.backup.domain.BackupSelection
@@ -13,7 +16,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal object BackupJsonCodec {
-    private const val FormatVersion = 2
+    private const val FormatVersion = 3
 
     fun encode(backup: LiftLogBackup): String = JSONObject().apply {
         put("formatVersion", FormatVersion)
@@ -71,16 +74,35 @@ internal object BackupJsonCodec {
                     put("completedAtEpochMillis", set.completedAtEpochMillis)
                 }
             })
+            if (backup.selection.workoutTemplates) put("workoutTemplates", backup.snapshot.workoutTemplates.toJsonArray { template ->
+                JSONObject().apply {
+                    put("id", template.id)
+                    put("name", template.name)
+                    put("createdAtEpochMillis", template.createdAtEpochMillis)
+                }
+            })
+            if (backup.selection.workoutTemplates) put("workoutTemplateExercises", backup.snapshot.workoutTemplateExercises.toJsonArray { templateExercise ->
+                JSONObject().apply {
+                    put("id", templateExercise.id)
+                    put("templateId", templateExercise.templateId)
+                    put("exerciseId", templateExercise.exerciseId)
+                    put("orderIndex", templateExercise.orderIndex)
+                }
+            })
         })
     }.toString(2)
 
     fun decode(source: String): LiftLogBackup {
         val root = JSONObject(source)
         val formatVersion = root.optInt("formatVersion", -1)
-        require(formatVersion == 1 || formatVersion == FormatVersion) {
+        require(formatVersion in 1..FormatVersion) {
             "This LiftLog backup format is not supported."
         }
-        val selection = if (formatVersion == 1) BackupSelection.Everything else root.getJSONObject("sections").toSelection()
+        val selection = if (formatVersion == 1) {
+            BackupSelection.Everything.copy(workoutTemplates = false)
+        } else {
+            root.getJSONObject("sections").toSelection(formatVersion)
+        }
         require(selection.hasAnySelection()) { "The backup does not contain any selected data." }
         val settings = if (selection.settings) root.getJSONObject("settings").let { settingsJson ->
             AppSettings(
@@ -98,7 +120,12 @@ internal object BackupJsonCodec {
                     name = item.nonBlankString("name"),
                     primaryMuscle = item.nonBlankString("primaryMuscle"),
                     equipment = item.nonBlankString("equipment"),
-                    category = item.nonBlankString("category"),
+                    category = item.optionalString("category")
+                        ?: if (item.nonBlankString("equipment").equals("Machine", ignoreCase = true)) {
+                            ExerciseCategory.Machine.name
+                        } else {
+                            ExerciseCategory.FreeWeights.name
+                        },
                     gymLocation = item.optionalString("gymLocation"),
                     youTubeUrl = item.optionalString("youTubeUrl"),
                     imageUri = item.optionalString("imageUri"),
@@ -137,6 +164,21 @@ internal object BackupJsonCodec {
                     completedAtEpochMillis = item.getLong("completedAtEpochMillis"),
                 )
             },
+            workoutTemplates = database.arrayFor("workoutTemplates", selection.workoutTemplates).mapJson { item ->
+                WorkoutTemplateEntity(
+                    id = item.positiveLong("id"),
+                    name = item.nonBlankString("name"),
+                    createdAtEpochMillis = item.getLong("createdAtEpochMillis"),
+                )
+            },
+            workoutTemplateExercises = database.arrayFor("workoutTemplateExercises", selection.workoutTemplates).mapJson { item ->
+                WorkoutTemplateExerciseEntity(
+                    id = item.positiveLong("id"),
+                    templateId = item.positiveLong("templateId"),
+                    exerciseId = item.positiveLong("exerciseId"),
+                    orderIndex = item.getInt("orderIndex").also { require(it >= 0) },
+                )
+            },
         )
         snapshot.validateRelations()
         return LiftLogBackup(
@@ -165,14 +207,16 @@ internal object BackupJsonCodec {
         put("workoutSessions", workoutSessions)
         put("workoutExercises", workoutExercises)
         put("setEntries", setEntries)
+        put("workoutTemplates", workoutTemplates)
     }
 
-    private fun JSONObject.toSelection(): BackupSelection = BackupSelection(
+    private fun JSONObject.toSelection(formatVersion: Int): BackupSelection = BackupSelection(
         settings = getBoolean("settings"),
         exercises = getBoolean("exercises"),
         workoutSessions = getBoolean("workoutSessions"),
         workoutExercises = getBoolean("workoutExercises"),
         setEntries = getBoolean("setEntries"),
+        workoutTemplates = if (formatVersion >= 3) getBoolean("workoutTemplates") else false,
     ).normalized()
 
     private fun JSONObject.putNullable(name: String, value: Any?) {
@@ -202,6 +246,7 @@ internal object BackupJsonCodec {
         val exerciseIds = exercises.map { it.id }.toSet()
         val sessionIds = workoutSessions.map { it.id }.toSet()
         val workoutExerciseIds = workoutExercises.map { it.id }.toSet()
+        val templateIds = workoutTemplates.map { it.id }.toSet()
         require(exerciseIds.size == exercises.size) { "Exercise IDs must be unique." }
         require(sessionIds.size == workoutSessions.size) { "Workout IDs must be unique." }
         require(workoutExerciseIds.size == workoutExercises.size) { "Workout exercise IDs must be unique." }
@@ -212,6 +257,13 @@ internal object BackupJsonCodec {
             "A set points to a missing workout exercise."
         }
         require(setEntries.map { it.id }.toSet().size == setEntries.size) { "Set IDs must be unique." }
+        require(templateIds.size == workoutTemplates.size) { "Template IDs must be unique." }
+        require(workoutTemplateExercises.all { it.templateId in templateIds && it.exerciseId in exerciseIds }) {
+            "A template exercise points to missing data."
+        }
+        require(workoutTemplateExercises.map { it.id }.toSet().size == workoutTemplateExercises.size) {
+            "Template exercise IDs must be unique."
+        }
     }
 }
 

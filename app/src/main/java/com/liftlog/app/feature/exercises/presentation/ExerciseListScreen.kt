@@ -1,5 +1,6 @@
 package com.liftlog.app.feature.exercises.presentation
 
+import android.util.Base64
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,11 +9,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -20,25 +24,38 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.Exercise
+import com.liftlog.app.core.model.ExerciseCategory
+import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.core.ui.theme.LiftLogTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ExerciseListRoute(
@@ -60,7 +77,7 @@ fun ExerciseListRoute(
 fun ExerciseListScreen(
     state: ExerciseListUiState,
     onSearchQueryChanged: (String) -> Unit,
-    onAddCustomExercise: (String, String, String) -> Unit,
+    onAddCustomExercise: (ExerciseDraft) -> Unit,
     onExerciseSelected: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -129,8 +146,8 @@ fun ExerciseListScreen(
     if (addDialogVisible) {
         CustomExerciseDialog(
             onDismiss = { addDialogVisible = false },
-            onSave = { name, muscle, equipment ->
-                onAddCustomExercise(name, muscle, equipment)
+            onSave = { draft ->
+                onAddCustomExercise(draft)
                 addDialogVisible = false
             },
         )
@@ -140,18 +157,49 @@ fun ExerciseListScreen(
 @Composable
 private fun CustomExerciseDialog(
     onDismiss: () -> Unit,
-    onSave: (String, String, String) -> Unit,
+    onSave: (ExerciseDraft) -> Unit,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
     var muscle by remember { mutableStateOf("") }
     var equipment by remember { mutableStateOf("") }
-    val isValid = name.isNotBlank() && muscle.isNotBlank() && equipment.isNotBlank()
+    var category by remember { mutableStateOf(ExerciseCategory.FreeWeights) }
+    var gymLocation by remember { mutableStateOf("") }
+    var youTubeUrl by remember { mutableStateOf("") }
+    var imageUri by remember { mutableStateOf<String?>(null) }
+    var imageError by remember { mutableStateOf<String?>(null) }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            imageError = null
+            val embeddedImage = runCatching {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        val bytes = stream.readBytes()
+                        require(bytes.size <= 3 * 1024 * 1024) { "The photo is larger than 3 MB." }
+                        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                        "data:$mimeType;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}"
+                    } ?: error("Unable to read the selected photo.")
+                }
+            }.getOrElse { error ->
+                imageError = error.message ?: "Unable to add the selected photo."
+                null
+            }
+            imageUri = embeddedImage
+        }
+    }
+    val isValid = name.isNotBlank() && muscle.isNotBlank() && equipment.isNotBlank() &&
+        (category == ExerciseCategory.FreeWeights || gymLocation.isNotBlank())
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("New exercise") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -173,11 +221,72 @@ private fun CustomExerciseDialog(
                     label = { Text("Equipment") },
                     singleLine = true,
                 )
+                Text(
+                    text = "Exercise type",
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    ExerciseCategory.entries.forEachIndexed { index, option ->
+                        SegmentedButton(
+                            selected = category == option,
+                            onClick = { category = option },
+                            shape = SegmentedButtonDefaults.itemShape(index, ExerciseCategory.entries.size),
+                            label = {
+                                Text(if (option == ExerciseCategory.FreeWeights) "Free weights" else "Machine")
+                            },
+                        )
+                    }
+                }
+                if (category == ExerciseCategory.Machine) {
+                    OutlinedTextField(
+                        value = gymLocation,
+                        onValueChange = { gymLocation = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Gym / location") },
+                        singleLine = true,
+                    )
+                }
+                OutlinedTextField(
+                    value = youTubeUrl,
+                    onValueChange = { youTubeUrl = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("YouTube link (optional)") },
+                    singleLine = true,
+                )
+                OutlinedButton(
+                    onClick = { imagePicker.launch(arrayOf("image/*")) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Outlined.Image, contentDescription = null)
+                    Text(
+                        text = if (imageUri == null) "Add photo" else "Photo selected",
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                imageError?.let { error ->
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(name, muscle, equipment) },
+                onClick = {
+                    onSave(
+                        ExerciseDraft(
+                            name = name,
+                            primaryMuscle = muscle,
+                            equipment = equipment,
+                            category = category,
+                            gymLocation = gymLocation.takeIf { category == ExerciseCategory.Machine },
+                            youTubeUrl = youTubeUrl,
+                            imageUri = imageUri,
+                        ),
+                    )
+                },
                 enabled = isValid,
             ) { Text("Add") }
         },
@@ -216,7 +325,11 @@ private fun ExerciseCard(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "${exercise.primaryMuscle} / ${exercise.equipment}",
+                    text = listOfNotNull(
+                        exercise.primaryMuscle,
+                        exercise.equipment,
+                        exercise.gymLocation,
+                    ).joinToString(" / "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -265,7 +378,7 @@ private fun ExerciseListScreenPreview() {
                 ),
             ),
             onSearchQueryChanged = {},
-            onAddCustomExercise = { _, _, _ -> },
+            onAddCustomExercise = {},
             onExerciseSelected = {},
         )
     }

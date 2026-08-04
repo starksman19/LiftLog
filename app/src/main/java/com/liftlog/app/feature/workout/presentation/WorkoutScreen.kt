@@ -19,6 +19,9 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.BookmarkAdd
+import androidx.compose.material.icons.outlined.PlaylistPlay
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -47,7 +50,11 @@ import com.liftlog.app.core.model.ActiveWorkout
 import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.LoggedExercise
 import com.liftlog.app.core.model.LoggedSet
+import com.liftlog.app.core.model.RecentExercisePerformance
+import com.liftlog.app.core.model.WorkoutTemplate
 import com.liftlog.app.core.ui.theme.LiftLogTheme
+import java.text.DateFormat
+import java.util.Date
 
 @Composable
 fun WorkoutRoute(
@@ -58,6 +65,10 @@ fun WorkoutRoute(
     WorkoutScreen(
         state = state,
         onStartWorkout = viewModel::startWorkout,
+        onOpenAddExercise = viewModel::openAddExercise,
+        onDismissAddExercise = viewModel::dismissAddExercise,
+        onSaveActiveWorkoutAsTemplate = viewModel::saveActiveWorkoutAsTemplate,
+        onStartTemplate = viewModel::startTemplate,
         onAddExercise = viewModel::addExercise,
         onAddSet = viewModel::addSet,
         onUpdateSet = viewModel::updateSet,
@@ -70,7 +81,11 @@ fun WorkoutRoute(
 @Composable
 fun WorkoutScreen(
     state: WorkoutUiState,
-    onStartWorkout: () -> Unit,
+    onStartWorkout: (String?) -> Unit,
+    onOpenAddExercise: (Exercise) -> Unit,
+    onDismissAddExercise: () -> Unit,
+    onSaveActiveWorkoutAsTemplate: (String) -> Unit,
+    onStartTemplate: (Long, String?) -> Unit,
     onAddExercise: (Long, String?) -> Unit,
     onAddSet: (Long, Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
@@ -84,12 +99,19 @@ fun WorkoutScreen(
     if (activeWorkout == null) {
         EmptyWorkoutScreen(
             onStartWorkout = onStartWorkout,
+            templates = state.templates,
+            onStartTemplate = onStartTemplate,
             modifier = modifier,
         )
     } else {
         ActiveWorkoutScreen(
             activeWorkout = activeWorkout,
             availableExercises = state.availableExercises,
+            exercisePendingAddition = state.exercisePendingAddition,
+            recentPerformances = state.recentPerformances,
+            onOpenAddExercise = onOpenAddExercise,
+            onDismissAddExercise = onDismissAddExercise,
+            onSaveActiveWorkoutAsTemplate = onSaveActiveWorkoutAsTemplate,
             onAddExercise = onAddExercise,
             onAddSet = onAddSet,
             onUpdateSet = onUpdateSet,
@@ -103,9 +125,13 @@ fun WorkoutScreen(
 
 @Composable
 private fun EmptyWorkoutScreen(
-    onStartWorkout: () -> Unit,
+    onStartWorkout: (String?) -> Unit,
+    templates: List<WorkoutTemplate>,
+    onStartTemplate: (Long, String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var startDialogVisible by remember { mutableStateOf(false) }
+    var templatePendingStart by remember { mutableStateOf<WorkoutTemplate?>(null) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -119,7 +145,7 @@ private fun EmptyWorkoutScreen(
             fontWeight = FontWeight.Bold,
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onStartWorkout) {
+        Button(onClick = { startDialogVisible = true }) {
             Icon(
                 imageVector = Icons.Outlined.PlayArrow,
                 contentDescription = null,
@@ -129,13 +155,84 @@ private fun EmptyWorkoutScreen(
                 modifier = Modifier.padding(start = 8.dp),
             )
         }
+        if (templates.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Templates",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            templates.forEach { template ->
+                OutlinedButton(onClick = { templatePendingStart = template }) {
+                    Icon(Icons.Outlined.PlaylistPlay, contentDescription = null)
+                    Text(
+                        text = "${template.name} (${template.exerciseCount})",
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+            }
+        }
     }
+
+    if (startDialogVisible) {
+        StartWorkoutDialog(
+            onDismiss = { startDialogVisible = false },
+            onStart = { location ->
+                onStartWorkout(location)
+                startDialogVisible = false
+            },
+        )
+    }
+
+    templatePendingStart?.let { template ->
+        StartWorkoutDialog(
+            title = "Start ${template.name}",
+            onDismiss = { templatePendingStart = null },
+            onStart = { location ->
+                onStartTemplate(template.id, location)
+                templatePendingStart = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun StartWorkoutDialog(
+    title: String = "Start workout",
+    onDismiss: () -> Unit,
+    onStart: (String?) -> Unit,
+) {
+    var gymLocation by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = gymLocation,
+                onValueChange = { gymLocation = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Gym / location (optional)") },
+                singleLine = true,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onStart(gymLocation.takeIf { it.isNotBlank() }) }) {
+                Text("Start")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
 private fun ActiveWorkoutScreen(
     activeWorkout: ActiveWorkout,
     availableExercises: List<Exercise>,
+    exercisePendingAddition: Exercise?,
+    recentPerformances: List<RecentExercisePerformance>,
+    onOpenAddExercise: (Exercise) -> Unit,
+    onDismissAddExercise: () -> Unit,
+    onSaveActiveWorkoutAsTemplate: (String) -> Unit,
     onAddExercise: (Long, String?) -> Unit,
     onAddSet: (Long, Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
@@ -144,7 +241,7 @@ private fun ActiveWorkoutScreen(
     onDiscardWorkout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var exercisePendingAddition by remember { mutableStateOf<Exercise?>(null) }
+    var saveTemplateDialogVisible by remember { mutableStateOf(false) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -169,9 +266,32 @@ private fun ActiveWorkoutScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                activeWorkout.gymLocation?.let { location ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 4.dp),
+                        )
+                        Text(
+                            text = location,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
 
             Row {
+                IconButton(
+                    onClick = { saveTemplateDialogVisible = true },
+                    enabled = activeWorkout.exercises.isNotEmpty(),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.BookmarkAdd,
+                        contentDescription = "Save as template",
+                    )
+                }
                 IconButton(onClick = onDiscardWorkout) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
@@ -196,7 +316,7 @@ private fun ActiveWorkoutScreen(
                 key = { exercise -> exercise.id },
             ) { exercise ->
                 AssistChip(
-                    onClick = { exercisePendingAddition = exercise },
+                    onClick = { onOpenAddExercise(exercise) },
                     label = { Text(exercise.name) },
                     leadingIcon = {
                         Icon(
@@ -230,18 +350,55 @@ private fun ActiveWorkoutScreen(
     exercisePendingAddition?.let { exercise ->
         AddExerciseToWorkoutDialog(
             exercise = exercise,
-            onDismiss = { exercisePendingAddition = null },
-            onConfirm = { notes ->
-                onAddExercise(exercise.id, notes)
-                exercisePendingAddition = null
+        recentPerformances = recentPerformances,
+        onDismiss = onDismissAddExercise,
+        onConfirm = { notes ->
+            onAddExercise(exercise.id, notes)
+                onDismissAddExercise()
+            },
+        )
+    }
+
+    if (saveTemplateDialogVisible) {
+        SaveWorkoutTemplateDialog(
+            onDismiss = { saveTemplateDialogVisible = false },
+            onSave = { name ->
+                onSaveActiveWorkoutAsTemplate(name)
+                saveTemplateDialogVisible = false
             },
         )
     }
 }
 
 @Composable
+private fun SaveWorkoutTemplateDialog(
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Save workout template") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Template name") },
+                singleLine = true,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+@Composable
 private fun AddExerciseToWorkoutDialog(
     exercise: Exercise,
+    recentPerformances: List<RecentExercisePerformance>,
     onDismiss: () -> Unit,
     onConfirm: (String?) -> Unit,
 ) {
@@ -255,6 +412,27 @@ private fun AddExerciseToWorkoutDialog(
                     text = "${exercise.primaryMuscle} / ${exercise.equipment}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (recentPerformances.isNotEmpty()) {
+                    Text(
+                        text = "Last two workouts",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    recentPerformances.forEach { performance ->
+                        Text(
+                            text = "${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(performance.finishedAtEpochMillis))}: " +
+                                performance.sets.joinToString { set -> "${set.weight.clean()} kg x ${set.reps}" },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "No previous completed workouts for this exercise.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
@@ -514,6 +692,10 @@ private fun WorkoutScreenPreview() {
                 ),
             ),
             onStartWorkout = {},
+            onOpenAddExercise = {},
+            onDismissAddExercise = {},
+            onSaveActiveWorkoutAsTemplate = {},
+            onStartTemplate = { _, _ -> },
             onAddExercise = { _, _ -> },
             onAddSet = { _, _, _ -> },
             onUpdateSet = { _, _, _ -> },

@@ -5,6 +5,7 @@ import com.liftlog.app.core.database.entity.ExerciseEntity
 import com.liftlog.app.core.database.entity.toModel
 import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.ExerciseCategory
+import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.feature.exercises.domain.ExerciseRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -36,13 +37,16 @@ class RoomExerciseRepository @Inject constructor(
         }
     }
 
-    override suspend fun addCustomExercise(name: String, primaryMuscle: String, equipment: String) {
+    override suspend fun addCustomExercise(draft: ExerciseDraft) {
         exerciseDao.insertExerciseWithSearch(
             ExerciseEntity(
-                name = name,
-                primaryMuscle = primaryMuscle,
-                equipment = equipment,
-                category = ExerciseCategory.FreeWeights.name,
+                name = draft.name,
+                primaryMuscle = draft.primaryMuscle,
+                equipment = draft.equipment,
+                category = draft.category.name,
+                gymLocation = draft.gymLocation,
+                youTubeUrl = draft.youTubeUrl,
+                imageUri = draft.imageUri,
                 isCustom = true,
                 createdAtEpochMillis = System.currentTimeMillis(),
             ),

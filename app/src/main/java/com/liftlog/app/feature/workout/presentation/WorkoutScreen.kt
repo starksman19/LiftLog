@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,11 +22,14 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.automirrored.outlined.PlaylistPlay
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,13 +51,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.ActiveWorkout
 import com.liftlog.app.core.model.Exercise
+import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.core.model.LoggedExercise
 import com.liftlog.app.core.model.LoggedSet
-import com.liftlog.app.core.model.RecentExercisePerformance
 import com.liftlog.app.core.model.WorkoutTemplate
 import com.liftlog.app.core.ui.theme.LiftLogTheme
-import java.text.DateFormat
-import java.util.Date
+import com.liftlog.app.feature.exercises.presentation.CustomExerciseDialog
 
 @Composable
 fun WorkoutRoute(
@@ -68,11 +69,10 @@ fun WorkoutRoute(
     WorkoutScreen(
         state = state,
         onStartWorkout = viewModel::startWorkout,
-        onOpenAddExercise = viewModel::openAddExercise,
-        onDismissAddExercise = viewModel::dismissAddExercise,
         onSaveActiveWorkoutAsTemplate = viewModel::saveActiveWorkoutAsTemplate,
         onStartTemplate = viewModel::startTemplate,
-        onAddExercise = viewModel::addExercise,
+        onAddExercises = viewModel::addExercises,
+        onCreateAndAddExercise = viewModel::createAndAddExercise,
         onAddSet = viewModel::addSet,
         onUpdateSet = viewModel::updateSet,
         onDeleteSet = viewModel::deleteSet,
@@ -90,11 +90,10 @@ fun WorkoutRoute(
 fun WorkoutScreen(
     state: WorkoutUiState,
     onStartWorkout: (String?) -> Unit,
-    onOpenAddExercise: (Exercise) -> Unit,
-    onDismissAddExercise: () -> Unit,
     onSaveActiveWorkoutAsTemplate: (String) -> Unit,
     onStartTemplate: (Long, String?) -> Unit,
-    onAddExercise: (Long, String?) -> Unit,
+    onAddExercises: (List<Long>) -> Unit,
+    onCreateAndAddExercise: (ExerciseDraft) -> Unit,
     onAddSet: (Long, Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
     onDeleteSet: (Long) -> Unit,
@@ -113,6 +112,7 @@ fun WorkoutScreen(
         EmptyWorkoutScreen(
             onStartWorkout = onStartWorkout,
             templates = state.templates,
+            locations = state.locations,
             onStartTemplate = onStartTemplate,
             onHistory = onHistory,
             onManageTemplates = onManageTemplates,
@@ -122,12 +122,10 @@ fun WorkoutScreen(
         ActiveWorkoutScreen(
             activeWorkout = activeWorkout,
             availableExercises = state.availableExercises,
-            exercisePendingAddition = state.exercisePendingAddition,
-            recentPerformances = state.recentPerformances,
-            onOpenAddExercise = onOpenAddExercise,
-            onDismissAddExercise = onDismissAddExercise,
+            locations = state.locations,
             onSaveActiveWorkoutAsTemplate = onSaveActiveWorkoutAsTemplate,
-            onAddExercise = onAddExercise,
+            onAddExercises = onAddExercises,
+            onCreateAndAddExercise = onCreateAndAddExercise,
             onAddSet = onAddSet,
             onUpdateSet = onUpdateSet,
             onDeleteSet = onDeleteSet,
@@ -145,6 +143,7 @@ fun WorkoutScreen(
 private fun EmptyWorkoutScreen(
     onStartWorkout: (String?) -> Unit,
     templates: List<WorkoutTemplate>,
+    locations: List<String>,
     onStartTemplate: (Long, String?) -> Unit,
     onHistory: () -> Unit,
     onManageTemplates: () -> Unit,
@@ -205,6 +204,7 @@ private fun EmptyWorkoutScreen(
 
     if (startDialogVisible) {
         StartWorkoutDialog(
+            locations = locations,
             onDismiss = { startDialogVisible = false },
             onStart = { location ->
                 onStartWorkout(location)
@@ -216,6 +216,7 @@ private fun EmptyWorkoutScreen(
     templatePendingStart?.let { template ->
         StartWorkoutDialog(
             title = "Start ${template.name}",
+            locations = locations,
             onDismiss = { templatePendingStart = null },
             onStart = { location ->
                 onStartTemplate(template.id, location)
@@ -228,24 +229,19 @@ private fun EmptyWorkoutScreen(
 @Composable
 private fun StartWorkoutDialog(
     title: String = "Start workout",
+    locations: List<String>,
     onDismiss: () -> Unit,
     onStart: (String?) -> Unit,
 ) {
-    var gymLocation by remember { mutableStateOf("") }
+    var gymLocation by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
-                value = gymLocation,
-                onValueChange = { gymLocation = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Gym / location (optional)") },
-                singleLine = true,
-            )
+            LocationPicker(selectedLocation = gymLocation, locations = locations, onLocationSelected = { gymLocation = it })
         },
         confirmButton = {
-            TextButton(onClick = { onStart(gymLocation.takeIf { it.isNotBlank() }) }) {
+            TextButton(onClick = { onStart(gymLocation) }) {
                 Text("Start")
             }
         },
@@ -257,12 +253,10 @@ private fun StartWorkoutDialog(
 private fun ActiveWorkoutScreen(
     activeWorkout: ActiveWorkout,
     availableExercises: List<Exercise>,
-    exercisePendingAddition: Exercise?,
-    recentPerformances: List<RecentExercisePerformance>,
-    onOpenAddExercise: (Exercise) -> Unit,
-    onDismissAddExercise: () -> Unit,
+    locations: List<String>,
     onSaveActiveWorkoutAsTemplate: (String) -> Unit,
-    onAddExercise: (Long, String?) -> Unit,
+    onAddExercises: (List<Long>) -> Unit,
+    onCreateAndAddExercise: (ExerciseDraft) -> Unit,
     onAddSet: (Long, Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
     onDeleteSet: (Long) -> Unit,
@@ -275,6 +269,24 @@ private fun ActiveWorkoutScreen(
 ) {
     var saveTemplateDialogVisible by remember { mutableStateOf(false) }
     var workoutDetailsDialogVisible by remember { mutableStateOf(false) }
+    var exercisePickerVisible by remember { mutableStateOf(false) }
+    if (exercisePickerVisible) {
+        ExercisePickerScreen(
+            exercises = availableExercises,
+            locations = locations,
+            existingExerciseIds = activeWorkout.exercises.map { it.exerciseId }.toSet(),
+            onDismiss = { exercisePickerVisible = false },
+            onAddExercises = { exerciseIds ->
+                onAddExercises(exerciseIds)
+                exercisePickerVisible = false
+            },
+            onCreateExercise = { draft ->
+                onCreateAndAddExercise(draft)
+                exercisePickerVisible = false
+            },
+        )
+        return
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -295,7 +307,7 @@ private fun ActiveWorkoutScreen(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "${activeWorkout.exercises.size} exercises",
+                    text = "${activeWorkout.exercises.size} exercises • ${activeWorkout.exercises.sumOf { it.sets.size }} sets",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -346,25 +358,9 @@ private fun ActiveWorkoutScreen(
             }
         }
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(end = 20.dp),
-        ) {
-            items(
-                items = availableExercises,
-                key = { exercise -> exercise.id },
-            ) { exercise ->
-                AssistChip(
-                    onClick = { onOpenAddExercise(exercise) },
-                    label = { Text(exercise.name) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Add,
-                            contentDescription = null,
-                        )
-                    },
-                )
-            }
+        OutlinedButton(onClick = { exercisePickerVisible = true }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Outlined.Add, contentDescription = null)
+            Text("Add exercises", modifier = Modifier.padding(start = 8.dp))
         }
 
         LazyColumn(
@@ -372,6 +368,15 @@ private fun ActiveWorkoutScreen(
             contentPadding = PaddingValues(bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            if (activeWorkout.exercises.isEmpty()) {
+                item {
+                    Text(
+                        "This workout is empty. Add exercises when you are ready.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 24.dp),
+                    )
+                }
+            }
             items(
                 items = activeWorkout.exercises,
                 key = { exercise -> exercise.id },
@@ -388,18 +393,6 @@ private fun ActiveWorkoutScreen(
         }
     }
 
-    exercisePendingAddition?.let { exercise ->
-        AddExerciseToWorkoutDialog(
-            exercise = exercise,
-        recentPerformances = recentPerformances,
-        onDismiss = onDismissAddExercise,
-        onConfirm = { notes ->
-            onAddExercise(exercise.id, notes)
-                onDismissAddExercise()
-            },
-        )
-    }
-
     if (saveTemplateDialogVisible) {
         SaveWorkoutTemplateDialog(
             onDismiss = { saveTemplateDialogVisible = false },
@@ -414,6 +407,7 @@ private fun ActiveWorkoutScreen(
         WorkoutDetailsDialog(
             initialGymLocation = activeWorkout.gymLocation,
             initialNotes = activeWorkout.notes,
+            locations = locations,
             onDismiss = { workoutDetailsDialogVisible = false },
             onSave = { location, notes ->
                 onUpdateWorkoutDetails(location, notes)
@@ -427,23 +421,18 @@ private fun ActiveWorkoutScreen(
 private fun WorkoutDetailsDialog(
     initialGymLocation: String?,
     initialNotes: String?,
+    locations: List<String>,
     onDismiss: () -> Unit,
     onSave: (String?, String?) -> Unit,
 ) {
-    var gymLocation by remember { mutableStateOf(initialGymLocation.orEmpty()) }
+    var gymLocation by remember { mutableStateOf(initialGymLocation) }
     var notes by remember { mutableStateOf(initialNotes.orEmpty()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Workout details") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = gymLocation,
-                    onValueChange = { gymLocation = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Gym / location") },
-                    singleLine = true,
-                )
+                LocationPicker(selectedLocation = gymLocation, locations = locations, onLocationSelected = { gymLocation = it })
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
@@ -486,57 +475,124 @@ private fun SaveWorkoutTemplateDialog(
 }
 
 @Composable
-private fun AddExerciseToWorkoutDialog(
-    exercise: Exercise,
-    recentPerformances: List<RecentExercisePerformance>,
-    onDismiss: () -> Unit,
-    onConfirm: (String?) -> Unit,
+private fun LocationPicker(
+    selectedLocation: String?,
+    locations: List<String>,
+    onLocationSelected: (String?) -> Unit,
 ) {
-    var notes by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(exercise.name) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = "${exercise.primaryMuscle} / ${exercise.equipment}",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (recentPerformances.isNotEmpty()) {
-                    Text(
-                        text = "Last two workouts",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    recentPerformances.forEach { performance ->
-                        Text(
-                            text = "${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(performance.finishedAtEpochMillis))}: " +
-                                performance.sets.joinToString { set -> "${set.weight.clean()} kg x ${set.reps}" },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else {
-                    Text(
-                        text = "No previous completed workouts for this exercise.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Location", style = MaterialTheme.typography.labelLarge)
+        FilterChip(
+            selected = selectedLocation == null,
+            onClick = { onLocationSelected(null) },
+            label = { Text("No location") },
+        )
+        if (locations.isEmpty()) {
+            Text("Add locations in the Locations tab.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            locations.forEach { location ->
+                FilterChip(
+                    selected = selectedLocation.equals(location, ignoreCase = true),
+                    onClick = { onLocationSelected(location) },
+                    label = { Text(location) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Notes for this workout") },
-                    minLines = 3,
                 )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(notes.takeIf { it.isNotBlank() }) }) { Text("Add") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+        }
+    }
+}
+
+@Composable
+private fun ExercisePickerScreen(
+    exercises: List<Exercise>,
+    locations: List<String>,
+    existingExerciseIds: Set<Long>,
+    onDismiss: () -> Unit,
+    onAddExercises: (List<Long>) -> Unit,
+    onCreateExercise: (ExerciseDraft) -> Unit,
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedExerciseIds by remember { mutableStateOf(existingExerciseIds) }
+    var createExerciseVisible by remember { mutableStateOf(false) }
+    val matchingExercises = exercises.filter { exercise ->
+        searchQuery.isBlank() || listOf(exercise.name, exercise.primaryMuscle, exercise.equipment)
+            .any { it.contains(searchQuery, ignoreCase = true) }
+    }
+    val newSelection = selectedExerciseIds - existingExerciseIds
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Add exercises", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = "Close") }
+        }
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+            label = { Text("Search available exercises") },
+            singleLine = true,
+        )
+        OutlinedButton(onClick = { createExerciseVisible = true }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Outlined.Add, contentDescription = null)
+            Text("Create new exercise", modifier = Modifier.padding(start = 8.dp))
+        }
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(matchingExercises, key = { it.id }) { exercise ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = exercise.id in selectedExerciseIds,
+                            onCheckedChange = { checked ->
+                                selectedExerciseIds = if (checked) selectedExerciseIds + exercise.id else selectedExerciseIds - exercise.id
+                            },
+                        )
+                        Column(modifier = Modifier.padding(start = 8.dp)) {
+                            Text(exercise.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                listOfNotNull(exercise.primaryMuscle, exercise.equipment, exercise.gymLocation).joinToString(" / "),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        Button(
+            onClick = { onAddExercises(newSelection.toList()) },
+            enabled = newSelection.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+        ) {
+            Text("Add ${newSelection.size} selected")
+        }
+    }
+
+    if (createExerciseVisible) {
+        CustomExerciseDialog(
+            locations = locations,
+            onDismiss = { createExerciseVisible = false },
+            onSave = { draft ->
+                onCreateExercise(draft)
+                createExerciseVisible = false
+            },
+        )
+    }
 }
 
 @Composable
@@ -580,6 +636,11 @@ internal fun LoggedExerciseCard(
                         text = "${exercise.primaryMuscle} / ${exercise.equipment}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = "${exercise.sets.size} sets",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
 
@@ -854,11 +915,10 @@ private fun WorkoutScreenPreview() {
                 ),
             ),
             onStartWorkout = {},
-            onOpenAddExercise = {},
-            onDismissAddExercise = {},
             onSaveActiveWorkoutAsTemplate = {},
             onStartTemplate = { _, _ -> },
-            onAddExercise = { _, _ -> },
+            onAddExercises = {},
+            onCreateAndAddExercise = {},
             onAddSet = { _, _, _ -> },
             onUpdateSet = { _, _, _ -> },
             onDeleteSet = {},

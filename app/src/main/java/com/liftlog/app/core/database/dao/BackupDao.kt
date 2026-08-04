@@ -7,6 +7,7 @@ import androidx.room3.Query
 import androidx.room3.Transaction
 import com.liftlog.app.core.database.entity.ExerciseEntity
 import com.liftlog.app.core.database.entity.ExerciseSearchEntity
+import com.liftlog.app.core.database.entity.GymLocationEntity
 import com.liftlog.app.core.database.entity.SetEntryEntity
 import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
@@ -35,6 +36,9 @@ interface BackupDao {
     @Query("SELECT * FROM workout_template_exercises ORDER BY id")
     suspend fun getWorkoutTemplateExercises(): List<WorkoutTemplateExerciseEntity>
 
+    @Query("SELECT * FROM gym_locations ORDER BY id")
+    suspend fun getGymLocations(): List<GymLocationEntity>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertExercises(entities: List<ExerciseEntity>)
 
@@ -59,6 +63,9 @@ interface BackupDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertWorkoutTemplateExercises(entities: List<WorkoutTemplateExerciseEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertGymLocations(entities: List<GymLocationEntity>)
+
     @Query("DELETE FROM set_entries")
     suspend fun clearSetEntries()
 
@@ -82,6 +89,9 @@ interface BackupDao {
 
     @Query("DELETE FROM workout_template_exercises WHERE templateId = :templateId")
     suspend fun clearWorkoutTemplateExercises(templateId: Long)
+
+    @Query("DELETE FROM gym_locations")
+    suspend fun clearGymLocations()
 
     @Query("SELECT id FROM workout_templates WHERE name = :name COLLATE NOCASE LIMIT 1")
     suspend fun findTemplateId(name: String): Long?
@@ -134,6 +144,7 @@ interface BackupDao {
         setEntries = getSetEntries(),
         workoutTemplates = getWorkoutTemplates(),
         workoutTemplateExercises = getWorkoutTemplateExercises(),
+        gymLocations = getGymLocations(),
     )
 
     @Transaction
@@ -142,6 +153,7 @@ interface BackupDao {
         clearWorkoutExercises()
         clearWorkoutSessions()
         clearWorkoutTemplates()
+        clearGymLocations()
         clearExerciseSearch()
         clearExercises()
 
@@ -153,6 +165,8 @@ interface BackupDao {
         if (snapshot.workoutExercises.isNotEmpty()) insertWorkoutExercises(snapshot.workoutExercises)
         if (snapshot.setEntries.isNotEmpty()) insertSetEntries(snapshot.setEntries)
         if (snapshot.workoutTemplates.isNotEmpty()) insertWorkoutTemplates(snapshot)
+        val locations = snapshot.locationsForImport()
+        if (locations.isNotEmpty()) insertGymLocations(locations)
     }
 
     @Transaction
@@ -160,6 +174,8 @@ interface BackupDao {
         snapshot: DatabaseSnapshot,
         replaceWorkoutData: Boolean,
     ) {
+        val locations = snapshot.locationsForImport()
+        if (locations.isNotEmpty()) insertGymLocations(locations.map { it.copy(id = 0) })
         val importedToLocalExerciseIds = mutableMapOf<Long, Long>()
         for (exercise in snapshot.exercises) {
             val existingId = findExerciseId(exercise.name, exercise.primaryMuscle, exercise.equipment)
@@ -219,6 +235,20 @@ interface BackupDao {
                 )
             }
             if (exercises.isNotEmpty()) insertWorkoutTemplateExercises(exercises)
+        }
+    }
+
+    private fun DatabaseSnapshot.locationsForImport(): List<GymLocationEntity> = buildList {
+        addAll(gymLocations)
+        exercises.mapNotNullTo(this) { exercise ->
+            exercise.gymLocation?.trim()?.takeIf { it.isNotEmpty() }?.let { name ->
+                GymLocationEntity(name = name, createdAtEpochMillis = 0)
+            }
+        }
+        workoutSessions.mapNotNullTo(this) { session ->
+            session.gymLocation?.trim()?.takeIf { it.isNotEmpty() }?.let { name ->
+                GymLocationEntity(name = name, createdAtEpochMillis = 0)
+            }
         }
     }
 }

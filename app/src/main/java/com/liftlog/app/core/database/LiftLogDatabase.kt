@@ -10,6 +10,7 @@ import com.liftlog.app.core.database.dao.WorkoutDao
 import com.liftlog.app.core.database.dao.WorkoutTemplateDao
 import com.liftlog.app.core.database.entity.ExerciseEntity
 import com.liftlog.app.core.database.entity.ExerciseSearchEntity
+import com.liftlog.app.core.database.entity.GymLocationEntity
 import com.liftlog.app.core.database.entity.SetEntryEntity
 import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
@@ -25,8 +26,9 @@ import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
         SetEntryEntity::class,
         WorkoutTemplateEntity::class,
         WorkoutTemplateExerciseEntity::class,
+        GymLocationEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class LiftLogDatabase : RoomDatabase() {

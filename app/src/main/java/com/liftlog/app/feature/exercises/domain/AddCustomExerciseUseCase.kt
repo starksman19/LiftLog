@@ -7,14 +7,14 @@ import javax.inject.Inject
 class AddCustomExerciseUseCase @Inject constructor(
     private val repository: ExerciseRepository,
 ) {
-    suspend operator fun invoke(draft: ExerciseDraft) {
+    suspend operator fun invoke(draft: ExerciseDraft): Long {
         require(draft.name.isNotBlank()) { "Exercise name cannot be empty." }
         require(draft.primaryMuscle.isNotBlank()) { "Primary muscle cannot be empty." }
         require(draft.equipment.isNotBlank()) { "Equipment cannot be empty." }
         require(draft.category != ExerciseCategory.Machine || !draft.gymLocation.isNullOrBlank()) {
             "A machine exercise needs a gym location."
         }
-        repository.addCustomExercise(
+        return repository.addCustomExercise(
             draft.copy(
                 name = draft.name.trim(),
                 primaryMuscle = draft.primaryMuscle.trim(),

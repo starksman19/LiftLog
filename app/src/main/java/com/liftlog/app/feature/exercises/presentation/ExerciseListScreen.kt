@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -23,6 +24,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -157,6 +159,7 @@ fun ExerciseListScreen(
     if (addDialogVisible) {
         CustomExerciseDialog(
             onDismiss = { addDialogVisible = false },
+            locations = state.locations,
             onSave = { draft ->
                 onAddCustomExercise(draft)
                 addDialogVisible = false
@@ -167,6 +170,7 @@ fun ExerciseListScreen(
     exercisePendingEdit?.let { exercise ->
         CustomExerciseDialog(
             exercise = exercise,
+            locations = state.locations,
             onDismiss = { exercisePendingEdit = null },
             onSave = { draft ->
                 onUpdateExercise(exercise.id, draft)
@@ -192,8 +196,9 @@ fun ExerciseListScreen(
 }
 
 @Composable
-private fun CustomExerciseDialog(
+internal fun CustomExerciseDialog(
     exercise: Exercise? = null,
+    locations: List<String>,
     onDismiss: () -> Unit,
     onSave: (ExerciseDraft) -> Unit,
 ) {
@@ -276,13 +281,24 @@ private fun CustomExerciseDialog(
                     }
                 }
                 if (category == ExerciseCategory.Machine) {
-                    OutlinedTextField(
-                        value = gymLocation,
-                        onValueChange = { gymLocation = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Gym / location") },
-                        singleLine = true,
-                    )
+                    Text("Location", style = MaterialTheme.typography.labelLarge)
+                    if (locations.isEmpty()) {
+                        Text(
+                            "Add a location first in the Locations tab.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        LazyColumn(modifier = Modifier.heightIn(max = 160.dp)) {
+                            items(locations, key = { it }) { location ->
+                                FilterChip(
+                                    selected = gymLocation.equals(location, ignoreCase = true),
+                                    onClick = { gymLocation = location },
+                                    label = { Text(location) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                    }
                 }
                 OutlinedTextField(
                     value = youTubeUrl,

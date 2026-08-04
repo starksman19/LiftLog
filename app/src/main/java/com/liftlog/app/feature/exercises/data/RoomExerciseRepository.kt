@@ -37,8 +37,8 @@ class RoomExerciseRepository @Inject constructor(
         }
     }
 
-    override suspend fun addCustomExercise(draft: ExerciseDraft) {
-        exerciseDao.insertExerciseWithSearch(
+    override suspend fun addCustomExercise(draft: ExerciseDraft): Long {
+        return exerciseDao.insertExerciseWithSearch(
             ExerciseEntity(
                 name = draft.name,
                 primaryMuscle = draft.primaryMuscle,

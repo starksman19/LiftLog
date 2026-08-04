@@ -104,7 +104,7 @@ fun WorkoutDetailScreen(
         }
         item {
             Text(
-                text = "${workout.gymLocation ?: "No location"} · ${workout.exercises.size} exercises",
+                text = "${workout.gymLocation ?: "No location"} - ${workout.exercises.size} exercises - ${workout.exercises.sumOf { it.sets.size }} sets",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             workout.notes?.let { Text(it, modifier = Modifier.padding(top = 4.dp)) }

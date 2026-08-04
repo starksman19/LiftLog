@@ -11,6 +11,7 @@ interface BackupRepository {
 
 enum class BackupSection(val label: String) {
     Settings("Settings"),
+    Locations("Locations"),
     Exercises("Exercises"),
     WorkoutSessions("Workouts"),
     WorkoutExercises("Exercises in workouts"),
@@ -20,6 +21,7 @@ enum class BackupSection(val label: String) {
 
 data class BackupSelection(
     val settings: Boolean = true,
+    val locations: Boolean = true,
     val exercises: Boolean = true,
     val workoutSessions: Boolean = true,
     val workoutExercises: Boolean = true,
@@ -28,6 +30,7 @@ data class BackupSelection(
 ) {
     fun includes(section: BackupSection): Boolean = when (section) {
         BackupSection.Settings -> settings
+        BackupSection.Locations -> locations
         BackupSection.Exercises -> exercises
         BackupSection.WorkoutSessions -> workoutSessions
         BackupSection.WorkoutExercises -> workoutExercises
@@ -38,6 +41,7 @@ data class BackupSelection(
     fun toggled(section: BackupSection, enabled: Boolean): BackupSelection {
         val updated = when (section) {
             BackupSection.Settings -> copy(settings = enabled)
+            BackupSection.Locations -> copy(locations = enabled)
             BackupSection.Exercises -> if (enabled) copy(exercises = true) else copy(
                 exercises = false,
                 workoutSessions = false,
@@ -78,7 +82,7 @@ data class BackupSelection(
         )
     }
 
-    fun hasAnySelection(): Boolean = settings || exercises || workoutSessions || workoutExercises || setEntries || workoutTemplates
+    fun hasAnySelection(): Boolean = settings || locations || exercises || workoutSessions || workoutExercises || setEntries || workoutTemplates
 
     fun hasWorkoutData(): Boolean = workoutSessions || workoutExercises || setEntries
 

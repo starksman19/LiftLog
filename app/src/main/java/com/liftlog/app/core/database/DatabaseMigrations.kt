@@ -22,4 +22,26 @@ object DatabaseMigrations {
             connection.execSQL("CREATE INDEX IF NOT EXISTS index_workout_template_exercises_exerciseId ON workout_template_exercises(exerciseId)")
         }
     }
+
+    val Migration3To4 = object : Migration(3, 4) {
+        override suspend fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "CREATE TABLE IF NOT EXISTS gym_locations (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, createdAtEpochMillis INTEGER NOT NULL)",
+            )
+            connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_gym_locations_name ON gym_locations(name)")
+            connection.execSQL(
+                """
+                INSERT OR IGNORE INTO gym_locations (name, createdAtEpochMillis)
+                SELECT DISTINCT name, 0
+                FROM (
+                    SELECT TRIM(gymLocation) AS name FROM exercises
+                    WHERE gymLocation IS NOT NULL AND TRIM(gymLocation) != ''
+                    UNION
+                    SELECT TRIM(gymLocation) AS name FROM workout_sessions
+                    WHERE gymLocation IS NOT NULL AND TRIM(gymLocation) != ''
+                )
+                """.trimIndent(),
+            )
+        }
+    }
 }

@@ -5,16 +5,17 @@ import androidx.lifecycle.viewModelScope
 import com.liftlog.app.core.model.ActiveWorkout
 import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.ExerciseCategory
-import com.liftlog.app.core.model.RecentExercisePerformance
+import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.core.model.WorkoutTemplate
+import com.liftlog.app.feature.exercises.domain.AddCustomExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.EnsureStarterExercisesUseCase
 import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
+import com.liftlog.app.feature.locations.domain.GymLocationRepository
 import com.liftlog.app.feature.workout.domain.AddExerciseToActiveWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.AddSetUseCase
 import com.liftlog.app.feature.workout.domain.DiscardWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.DeleteSetUseCase
 import com.liftlog.app.feature.workout.domain.FinishWorkoutUseCase
-import com.liftlog.app.feature.workout.domain.GetRecentExercisePerformancesUseCase
 import com.liftlog.app.feature.workout.domain.ObserveActiveWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.ObserveWorkoutTemplatesUseCase
 import com.liftlog.app.feature.workout.domain.SaveActiveWorkoutAsTemplateUseCase
@@ -27,7 +28,6 @@ import com.liftlog.app.feature.workout.domain.DeleteWorkoutExerciseUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -41,7 +41,7 @@ class WorkoutViewModel @Inject constructor(
     private val ensureStarterExercisesUseCase: EnsureStarterExercisesUseCase,
     private val startWorkoutUseCase: StartWorkoutUseCase,
     private val addExerciseToActiveWorkoutUseCase: AddExerciseToActiveWorkoutUseCase,
-    private val getRecentExercisePerformancesUseCase: GetRecentExercisePerformancesUseCase,
+    private val addCustomExerciseUseCase: AddCustomExerciseUseCase,
     private val saveActiveWorkoutAsTemplateUseCase: SaveActiveWorkoutAsTemplateUseCase,
     private val startWorkoutTemplateUseCase: StartWorkoutTemplateUseCase,
     private val addSetUseCase: AddSetUseCase,
@@ -52,29 +52,23 @@ class WorkoutViewModel @Inject constructor(
     private val updateActiveWorkoutDetailsUseCase: UpdateActiveWorkoutDetailsUseCase,
     private val updateWorkoutExerciseNotesUseCase: UpdateWorkoutExerciseNotesUseCase,
     private val deleteWorkoutExerciseUseCase: DeleteWorkoutExerciseUseCase,
+    gymLocationRepository: GymLocationRepository,
 ) : ViewModel() {
-    private val exercisePendingAddition = MutableStateFlow<Exercise?>(null)
-    private val recentPerformances = MutableStateFlow<List<RecentExercisePerformance>>(emptyList())
-
     val uiState: StateFlow<WorkoutUiState> = combine(
         observeActiveWorkoutUseCase(),
         observeExercisesUseCase(""),
-        exercisePendingAddition,
-        recentPerformances,
         observeWorkoutTemplatesUseCase(),
-    ) { activeWorkout, exercises, pendingExercise, recent, templates ->
+        gymLocationRepository.observeLocations(),
+    ) { activeWorkout, exercises, templates, locations ->
         WorkoutUiState(
             activeWorkout = activeWorkout,
             availableExercises = exercises
                 .filter { exercise ->
                     exercise.category == ExerciseCategory.FreeWeights ||
-                        exercise.gymLocation.isNullOrBlank() ||
                         exercise.gymLocation.equals(activeWorkout?.gymLocation, ignoreCase = true)
-                }
-                .take(8),
-            exercisePendingAddition = pendingExercise,
-            recentPerformances = recent,
+                },
             templates = templates,
+            locations = locations,
         )
     }
         .stateIn(
@@ -95,18 +89,6 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
-    fun openAddExercise(exercise: Exercise) {
-        exercisePendingAddition.value = exercise
-        viewModelScope.launch {
-            recentPerformances.value = getRecentExercisePerformancesUseCase(exercise.id)
-        }
-    }
-
-    fun dismissAddExercise() {
-        exercisePendingAddition.value = null
-        recentPerformances.value = emptyList()
-    }
-
     fun saveActiveWorkoutAsTemplate(name: String) {
         viewModelScope.launch {
             saveActiveWorkoutAsTemplateUseCase(name)
@@ -122,6 +104,19 @@ class WorkoutViewModel @Inject constructor(
     fun addExercise(exerciseId: Long, notes: String?) {
         viewModelScope.launch {
             addExerciseToActiveWorkoutUseCase(exerciseId, notes)
+        }
+    }
+
+    fun addExercises(exerciseIds: List<Long>) {
+        viewModelScope.launch {
+            exerciseIds.forEach { exerciseId -> addExerciseToActiveWorkoutUseCase(exerciseId, null) }
+        }
+    }
+
+    fun createAndAddExercise(draft: ExerciseDraft) {
+        viewModelScope.launch {
+            val exerciseId = addCustomExerciseUseCase(draft)
+            addExerciseToActiveWorkoutUseCase(exerciseId, null)
         }
     }
 
@@ -175,7 +170,6 @@ class WorkoutViewModel @Inject constructor(
 data class WorkoutUiState(
     val activeWorkout: ActiveWorkout? = null,
     val availableExercises: List<Exercise> = emptyList(),
-    val exercisePendingAddition: Exercise? = null,
-    val recentPerformances: List<RecentExercisePerformance> = emptyList(),
     val templates: List<WorkoutTemplate> = emptyList(),
+    val locations: List<String> = emptyList(),
 )

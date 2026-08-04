@@ -37,7 +37,7 @@ class ExerciseMutationUseCaseTest {
 
         override fun observeExercises(query: String): Flow<List<Exercise>> = emptyFlow()
         override suspend fun ensureStarterExercises() = Unit
-        override suspend fun addCustomExercise(draft: ExerciseDraft) = Unit
+        override suspend fun addCustomExercise(draft: ExerciseDraft): Long = 1L
         override suspend fun updateExercise(exerciseId: Long, draft: ExerciseDraft) {
             updatedId = exerciseId
             updatedDraft = draft

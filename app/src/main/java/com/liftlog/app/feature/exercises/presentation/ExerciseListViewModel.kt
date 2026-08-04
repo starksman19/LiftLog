@@ -9,6 +9,7 @@ import com.liftlog.app.feature.exercises.domain.AddCustomExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.DeleteExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
 import com.liftlog.app.feature.exercises.domain.UpdateExerciseUseCase
+import com.liftlog.app.feature.locations.domain.GymLocationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -29,19 +31,19 @@ class ExerciseListViewModel @Inject constructor(
     private val addCustomExerciseUseCase: AddCustomExerciseUseCase,
     private val updateExerciseUseCase: UpdateExerciseUseCase,
     private val deleteExerciseUseCase: DeleteExerciseUseCase,
+    gymLocationRepository: GymLocationRepository,
 ) : ViewModel() {
     private val query = MutableStateFlow("")
 
-    val uiState: StateFlow<ExerciseListUiState> = query
-        .flatMapLatest { currentQuery ->
-            observeExercisesUseCase(currentQuery).map { exercises ->
-                ExerciseListUiState(
-                    searchQuery = currentQuery,
-                    exercises = exercises,
-                )
-            }
+    val uiState: StateFlow<ExerciseListUiState> = query.flatMapLatest { currentQuery ->
+        combine(observeExercisesUseCase(currentQuery), gymLocationRepository.observeLocations()) { exercises, locations ->
+            ExerciseListUiState(
+                searchQuery = currentQuery,
+                exercises = exercises,
+                locations = locations,
+            )
         }
-        .stateIn(
+    }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = ExerciseListUiState(),
@@ -75,4 +77,5 @@ class ExerciseListViewModel @Inject constructor(
 data class ExerciseListUiState(
     val searchQuery: String = "",
     val exercises: List<Exercise> = emptyList(),
+    val locations: List<String> = emptyList(),
 )

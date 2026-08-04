@@ -6,6 +6,7 @@ import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -27,6 +28,7 @@ import com.liftlog.app.feature.placeholder.PlaceholderScreen
 import com.liftlog.app.feature.progress.presentation.ProgressRoute
 import com.liftlog.app.feature.progress.presentation.ExerciseHistoryRoute
 import com.liftlog.app.feature.settings.presentation.SettingsRoute
+import com.liftlog.app.feature.locations.presentation.GymLocationsRoute
 import com.liftlog.app.feature.workout.presentation.WorkoutRoute
 import com.liftlog.app.feature.workout.presentation.WorkoutHistoryRoute
 import com.liftlog.app.feature.workout.presentation.WorkoutDetailRoute
@@ -39,6 +41,7 @@ fun LiftLogApp() {
         TopLevelDestination.Exercises,
         TopLevelDestination.Workout,
         TopLevelDestination.Progress,
+        TopLevelDestination.Locations,
         TopLevelDestination.Settings,
     )
 
@@ -118,6 +121,9 @@ fun LiftLogApp() {
             composable(TopLevelDestination.Settings.route) {
                 SettingsRoute()
             }
+            composable(TopLevelDestination.Locations.route) {
+                GymLocationsRoute()
+            }
             composable(
                 route = "exercise/{exerciseId}",
                 arguments = listOf(navArgument("exerciseId") { type = NavType.LongType }),
@@ -139,5 +145,6 @@ private sealed class TopLevelDestination(
     data object Exercises : TopLevelDestination("exercises", "Exercises", Icons.Outlined.FitnessCenter)
     data object Workout : TopLevelDestination("workout", "Workout", Icons.Outlined.History)
     data object Progress : TopLevelDestination("progress", "Progress", Icons.Outlined.Analytics)
+    data object Locations : TopLevelDestination("locations", "Locations", Icons.Outlined.LocationOn)
     data object Settings : TopLevelDestination("settings", "Settings", Icons.Outlined.Settings)
 }

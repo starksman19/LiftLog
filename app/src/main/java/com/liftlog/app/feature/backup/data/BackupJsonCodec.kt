@@ -1,6 +1,7 @@
 package com.liftlog.app.feature.backup.data
 
 import com.liftlog.app.core.database.entity.ExerciseEntity
+import com.liftlog.app.core.database.entity.GymLocationEntity
 import com.liftlog.app.core.database.entity.SetEntryEntity
 import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
@@ -16,7 +17,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal object BackupJsonCodec {
-    private const val FormatVersion = 3
+    private const val FormatVersion = 4
 
     fun encode(backup: LiftLogBackup): String = JSONObject().apply {
         put("formatVersion", FormatVersion)
@@ -29,6 +30,13 @@ internal object BackupJsonCodec {
             })
         }
         put("database", JSONObject().apply {
+            if (backup.selection.locations) put("gymLocations", backup.snapshot.gymLocations.toJsonArray { location ->
+                JSONObject().apply {
+                    put("id", location.id)
+                    put("name", location.name)
+                    put("createdAtEpochMillis", location.createdAtEpochMillis)
+                }
+            })
             if (backup.selection.exercises) put("exercises", backup.snapshot.exercises.toJsonArray { exercise ->
                 JSONObject().apply {
                     put("id", exercise.id)
@@ -99,7 +107,7 @@ internal object BackupJsonCodec {
             "This LiftLog backup format is not supported."
         }
         val selection = if (formatVersion == 1) {
-            BackupSelection.Everything.copy(workoutTemplates = false)
+            BackupSelection.Everything.copy(locations = false, workoutTemplates = false)
         } else {
             root.getJSONObject("sections").toSelection(formatVersion)
         }
@@ -114,6 +122,13 @@ internal object BackupJsonCodec {
         }
         val database = root.getJSONObject("database")
         val snapshot = DatabaseSnapshot(
+            gymLocations = database.arrayFor("gymLocations", selection.locations).mapJson { item ->
+                GymLocationEntity(
+                    id = item.positiveLong("id"),
+                    name = item.nonBlankString("name"),
+                    createdAtEpochMillis = item.getLong("createdAtEpochMillis"),
+                )
+            },
             exercises = database.arrayFor("exercises", selection.exercises).mapJson { item ->
                 ExerciseEntity(
                     id = item.positiveLong("id"),
@@ -203,6 +218,7 @@ internal object BackupJsonCodec {
 
     private fun BackupSelection.toJson(): JSONObject = JSONObject().apply {
         put("settings", settings)
+        put("locations", locations)
         put("exercises", exercises)
         put("workoutSessions", workoutSessions)
         put("workoutExercises", workoutExercises)
@@ -212,6 +228,7 @@ internal object BackupJsonCodec {
 
     private fun JSONObject.toSelection(formatVersion: Int): BackupSelection = BackupSelection(
         settings = getBoolean("settings"),
+        locations = if (formatVersion >= 4) getBoolean("locations") else false,
         exercises = getBoolean("exercises"),
         workoutSessions = getBoolean("workoutSessions"),
         workoutExercises = getBoolean("workoutExercises"),

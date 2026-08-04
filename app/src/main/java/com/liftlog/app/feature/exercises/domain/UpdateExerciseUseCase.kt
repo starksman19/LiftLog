@@ -9,11 +9,19 @@ class UpdateExerciseUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(exerciseId: Long, draft: ExerciseDraft) {
         require(draft.name.isNotBlank()) { "Exercise name cannot be empty." }
-        require(draft.primaryMuscle.isNotBlank()) { "Primary muscle cannot be empty." }
-        require(draft.equipment.isNotBlank()) { "Equipment cannot be empty." }
         require(draft.category != ExerciseCategory.Machine || !draft.gymLocation.isNullOrBlank()) {
             "A machine exercise needs a gym location."
         }
-        repository.updateExercise(exerciseId, draft)
+        repository.updateExercise(
+            exerciseId,
+            draft.copy(
+                name = draft.name.trim(),
+                primaryMuscle = draft.primaryMuscle.trim(),
+                equipment = draft.equipment.trim(),
+                gymLocation = draft.gymLocation?.trim()?.takeIf { it.isNotEmpty() },
+                youTubeUrl = draft.youTubeUrl?.trim()?.takeIf { it.isNotEmpty() },
+                imageUri = draft.imageUri?.trim()?.takeIf { it.isNotEmpty() },
+            ),
+        )
     }
 }

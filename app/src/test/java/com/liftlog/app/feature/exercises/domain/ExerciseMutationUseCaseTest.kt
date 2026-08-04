@@ -11,6 +11,17 @@ import org.junit.Test
 
 class ExerciseMutationUseCaseTest {
     @Test
+    fun `adding an exercise accepts empty optional details`() = runTest {
+        val repository = FakeExerciseRepository()
+        val draft = ExerciseDraft("Plank", "   ", "", ExerciseCategory.FreeWeights, null, null, null)
+
+        AddCustomExerciseUseCase(repository)(draft)
+
+        assertEquals("", repository.addedDraft?.primaryMuscle)
+        assertEquals("", repository.addedDraft?.equipment)
+    }
+
+    @Test
     fun `updating a machine keeps its required gym location`() = runTest {
         val repository = FakeExerciseRepository()
         val draft = ExerciseDraft("Leg Press", "Legs", "Machine", ExerciseCategory.Machine, "Main Gym", null, null)
@@ -33,11 +44,15 @@ class ExerciseMutationUseCaseTest {
     private class FakeExerciseRepository : ExerciseRepository {
         var updatedId: Long? = null
         var updatedDraft: ExerciseDraft? = null
+        var addedDraft: ExerciseDraft? = null
         var deletedId: Long? = null
 
         override fun observeExercises(query: String): Flow<List<Exercise>> = emptyFlow()
         override suspend fun ensureStarterExercises() = Unit
-        override suspend fun addCustomExercise(draft: ExerciseDraft): Long = 1L
+        override suspend fun addCustomExercise(draft: ExerciseDraft): Long {
+            addedDraft = draft
+            return 1L
+        }
         override suspend fun updateExercise(exerciseId: Long, draft: ExerciseDraft) {
             updatedId = exerciseId
             updatedDraft = draft

@@ -169,7 +169,12 @@ private fun ExerciseInformationCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("${exercise.primaryMuscle} / ${exercise.equipment}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            val details = listOf(exercise.primaryMuscle, exercise.equipment)
+                .filter { it.isNotBlank() }
+                .joinToString(" / ")
+            if (details.isNotBlank()) {
+                Text(details, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text(t(if (exercise.category == com.liftlog.app.core.model.ExerciseCategory.Machine) "Machine" else "Free weights"))
             exercise.gymLocation?.let { Text(t("Location: $it", "Lokalizacja: $it")) }
             image?.let {

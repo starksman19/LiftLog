@@ -587,10 +587,14 @@ private fun ExercisePickerScreen(
                         )
                         Column(modifier = Modifier.padding(start = 8.dp)) {
                             Text(exercise.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text(
-                                listOfNotNull(exercise.primaryMuscle, exercise.equipment, exercise.gymLocation).joinToString(" / "),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            val details = listOf(
+                                exercise.primaryMuscle,
+                                exercise.equipment,
+                                exercise.gymLocation.orEmpty(),
+                            ).filter { it.isNotBlank() }.joinToString(" / ")
+                            if (details.isNotBlank()) {
+                                Text(details, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }
@@ -655,11 +659,16 @@ internal fun LoggedExerciseCard(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
-                    Text(
-                        text = "${exercise.primaryMuscle} / ${exercise.equipment}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    val details = listOf(exercise.primaryMuscle, exercise.equipment)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" / ")
+                    if (details.isNotBlank()) {
+                        Text(
+                            text = details,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Text(
                         text = t("${exercise.sets.size} sets", "${exercise.sets.size} serii"),
                         style = MaterialTheme.typography.labelMedium,

@@ -233,7 +233,7 @@ internal fun CustomExerciseDialog(
             imageUri = embeddedImage
         }
     }
-    val isValid = name.isNotBlank() && muscle.isNotBlank() && equipment.isNotBlank() &&
+    val isValid = name.isNotBlank() &&
         (category == ExerciseCategory.FreeWeights || gymLocation.isNotBlank())
 
     AlertDialog(
@@ -255,14 +255,14 @@ internal fun CustomExerciseDialog(
                     value = muscle,
                     onValueChange = { muscle = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(t("Primary muscle")) },
+                    label = { Text(t("Primary muscle (optional)", "Główna partia mięśniowa (opcjonalnie)")) },
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = equipment,
                     onValueChange = { equipment = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(t("Equipment")) },
+                    label = { Text(t("Equipment (optional)", "Sprzęt / maszyna (opcjonalnie)")) },
                     singleLine = true,
                 )
                 Text(
@@ -384,15 +384,18 @@ private fun ExerciseCard(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Text(
-                    text = listOfNotNull(
-                        exercise.primaryMuscle,
-                        exercise.equipment,
-                        exercise.gymLocation,
-                    ).joinToString(" / "),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                val details = listOf(
+                    exercise.primaryMuscle,
+                    exercise.equipment,
+                    exercise.gymLocation.orEmpty(),
+                ).filter { it.isNotBlank() }.joinToString(" / ")
+                if (details.isNotBlank()) {
+                    Text(
+                        text = details,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             Row {

@@ -133,10 +133,10 @@ internal object BackupJsonCodec {
                 ExerciseEntity(
                     id = item.positiveLong("id"),
                     name = item.nonBlankString("name"),
-                    primaryMuscle = item.nonBlankString("primaryMuscle"),
-                    equipment = item.nonBlankString("equipment"),
+                    primaryMuscle = item.optionalString("primaryMuscle").orEmpty(),
+                    equipment = item.optionalString("equipment").orEmpty(),
                     category = item.optionalString("category")
-                        ?: if (item.nonBlankString("equipment").equals("Machine", ignoreCase = true)) {
+                        ?: if (item.optionalString("equipment").equals("Machine", ignoreCase = true)) {
                             ExerciseCategory.Machine.name
                         } else {
                             ExerciseCategory.FreeWeights.name

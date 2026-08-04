@@ -17,11 +17,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
@@ -45,7 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,6 +71,8 @@ fun ExerciseListRoute(
         state = state,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onAddCustomExercise = viewModel::addCustomExercise,
+        onUpdateExercise = viewModel::updateExercise,
+        onDeleteExercise = viewModel::deleteExercise,
         onExerciseSelected = onExerciseSelected,
     )
 }
@@ -78,10 +83,14 @@ fun ExerciseListScreen(
     state: ExerciseListUiState,
     onSearchQueryChanged: (String) -> Unit,
     onAddCustomExercise: (ExerciseDraft) -> Unit,
+    onUpdateExercise: (Long, ExerciseDraft) -> Unit,
+    onDeleteExercise: (Long) -> Unit,
     onExerciseSelected: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var addDialogVisible by remember { mutableStateOf(false) }
+    var exercisePendingEdit by remember { mutableStateOf<Exercise?>(null) }
+    var exercisePendingDelete by remember { mutableStateOf<Exercise?>(null) }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
@@ -137,6 +146,8 @@ fun ExerciseListScreen(
                     ExerciseCard(
                         exercise = exercise,
                         onClick = { onExerciseSelected(exercise.id) },
+                        onEdit = { exercisePendingEdit = exercise },
+                        onDelete = { exercisePendingDelete = exercise },
                     )
                 }
             }
@@ -152,22 +163,49 @@ fun ExerciseListScreen(
             },
         )
     }
+
+    exercisePendingEdit?.let { exercise ->
+        CustomExerciseDialog(
+            exercise = exercise,
+            onDismiss = { exercisePendingEdit = null },
+            onSave = { draft ->
+                onUpdateExercise(exercise.id, draft)
+                exercisePendingEdit = null
+            },
+        )
+    }
+
+    exercisePendingDelete?.let { exercise ->
+        AlertDialog(
+            onDismissRequest = { exercisePendingDelete = null },
+            title = { Text("Delete ${exercise.name}?") },
+            text = { Text("This also removes its workout entries and template references.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteExercise(exercise.id)
+                    exercisePendingDelete = null
+                }) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { exercisePendingDelete = null }) { Text("Cancel") } },
+        )
+    }
 }
 
 @Composable
 private fun CustomExerciseDialog(
+    exercise: Exercise? = null,
     onDismiss: () -> Unit,
     onSave: (ExerciseDraft) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var name by remember { mutableStateOf("") }
-    var muscle by remember { mutableStateOf("") }
-    var equipment by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf(ExerciseCategory.FreeWeights) }
-    var gymLocation by remember { mutableStateOf("") }
-    var youTubeUrl by remember { mutableStateOf("") }
-    var imageUri by remember { mutableStateOf<String?>(null) }
+    var name by remember { mutableStateOf(exercise?.name.orEmpty()) }
+    var muscle by remember { mutableStateOf(exercise?.primaryMuscle.orEmpty()) }
+    var equipment by remember { mutableStateOf(exercise?.equipment.orEmpty()) }
+    var category by remember { mutableStateOf(exercise?.category ?: ExerciseCategory.FreeWeights) }
+    var gymLocation by remember { mutableStateOf(exercise?.gymLocation.orEmpty()) }
+    var youTubeUrl by remember { mutableStateOf(exercise?.youTubeUrl.orEmpty()) }
+    var imageUri by remember { mutableStateOf(exercise?.imageUri) }
     var imageError by remember { mutableStateOf<String?>(null) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
@@ -194,7 +232,7 @@ private fun CustomExerciseDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New exercise") },
+        title = { Text(if (exercise == null) "New exercise" else "Edit exercise") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -263,6 +301,9 @@ private fun CustomExerciseDialog(
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
+                if (imageUri != null) {
+                    TextButton(onClick = { imageUri = null }) { Text("Remove photo") }
+                }
                 imageError?.let { error ->
                     Text(
                         text = error,
@@ -288,7 +329,7 @@ private fun CustomExerciseDialog(
                     )
                 },
                 enabled = isValid,
-            ) { Text("Add") }
+            ) { Text(if (exercise == null) "Add" else "Save") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -300,6 +341,8 @@ private fun CustomExerciseDialog(
 private fun ExerciseCard(
     exercise: Exercise,
     onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -335,12 +378,13 @@ private fun ExerciseCard(
                 )
             }
 
-            if (exercise.isCustom) {
-                Text(
-                    text = "Custom",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Outlined.Edit, contentDescription = "Edit exercise")
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Outlined.Delete, contentDescription = "Delete exercise")
+                }
             }
         }
     }
@@ -379,6 +423,8 @@ private fun ExerciseListScreenPreview() {
             ),
             onSearchQueryChanged = {},
             onAddCustomExercise = {},
+            onUpdateExercise = { _, _ -> },
+            onDeleteExercise = {},
             onExerciseSelected = {},
         )
     }

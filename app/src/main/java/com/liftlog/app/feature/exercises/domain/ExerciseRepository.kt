@@ -8,4 +8,6 @@ interface ExerciseRepository {
     fun observeExercises(query: String): Flow<List<Exercise>>
     suspend fun ensureStarterExercises()
     suspend fun addCustomExercise(draft: ExerciseDraft)
+    suspend fun updateExercise(exerciseId: Long, draft: ExerciseDraft)
+    suspend fun deleteExercise(exerciseId: Long)
 }

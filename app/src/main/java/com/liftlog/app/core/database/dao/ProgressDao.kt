@@ -19,10 +19,10 @@ interface ProgressDao {
         WHERE ws.finishedAtEpochMillis IS NOT NULL
         GROUP BY ws.id
         ORDER BY ws.startedAtEpochMillis DESC
-        LIMIT 7
+        LIMIT :limit
         """,
     )
-    fun observeRecentSessionVolumes(): Flow<List<SessionVolumeRow>>
+    fun observeRecentSessionVolumes(limit: Int): Flow<List<SessionVolumeRow>>
 
     @Query(
         """

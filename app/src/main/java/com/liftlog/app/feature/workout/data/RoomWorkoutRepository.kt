@@ -5,10 +5,13 @@ import com.liftlog.app.core.database.entity.SetEntryEntity
 import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
 import com.liftlog.app.core.database.model.WorkoutExerciseRow
+import com.liftlog.app.core.database.model.WorkoutSummaryRow
 import com.liftlog.app.core.model.ActiveWorkout
 import com.liftlog.app.core.model.LoggedExercise
 import com.liftlog.app.core.model.LoggedSet
 import com.liftlog.app.core.model.RecentExercisePerformance
+import com.liftlog.app.core.model.WorkoutDetail
+import com.liftlog.app.core.model.WorkoutSummary
 import com.liftlog.app.feature.workout.domain.WorkoutRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -36,12 +39,35 @@ class RoomWorkoutRepository @Inject constructor(
                 id = session.id,
                 startedAtEpochMillis = session.startedAtEpochMillis,
                 gymLocation = session.gymLocation,
+                notes = session.notes,
                                 exercises = emptyList(),
                             ),
                         )
                     } else {
                         workoutDao.observeSetEntries(exerciseIds).map { setEntries ->
                             session.toActiveWorkout(exerciseRows, setEntries)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun observeCompletedWorkouts(): Flow<List<WorkoutSummary>> =
+        workoutDao.observeCompletedWorkoutSummaries().map { rows -> rows.map { row -> row.toModel() } }
+
+    override fun observeWorkoutDetail(workoutSessionId: Long): Flow<WorkoutDetail?> {
+        return workoutDao.observeWorkoutSession(workoutSessionId).flatMapLatest { session ->
+            if (session?.finishedAtEpochMillis == null) {
+                flowOf(null)
+            } else {
+                workoutDao.observeWorkoutExercises(session.id).flatMapLatest { exerciseRows ->
+                    val workoutExerciseIds = exerciseRows.map { it.workoutExerciseId }
+                    if (workoutExerciseIds.isEmpty()) {
+                        flowOf(session.toWorkoutDetail(emptyList(), emptyList()))
+                    } else {
+                        workoutDao.observeSetEntries(workoutExerciseIds).map { entries ->
+                            session.toWorkoutDetail(exerciseRows, entries)
                         }
                     }
                 }
@@ -80,6 +106,10 @@ class RoomWorkoutRepository @Inject constructor(
 
     override suspend fun addExerciseToActiveWorkout(exerciseId: Long, notes: String?) {
         val workoutSessionId = workoutDao.getActiveSessionId() ?: return
+        addExerciseToWorkout(workoutSessionId, exerciseId, notes)
+    }
+
+    override suspend fun addExerciseToWorkout(workoutSessionId: Long, exerciseId: Long, notes: String?) {
         val orderIndex = workoutDao.getNextExerciseOrder(workoutSessionId)
 
         workoutDao.insertWorkoutExercise(
@@ -124,6 +154,46 @@ class RoomWorkoutRepository @Inject constructor(
         workoutDao.deleteSetEntry(setEntryId)
     }
 
+    override suspend fun updateActiveWorkoutDetails(gymLocation: String?, notes: String?) {
+        val workoutSessionId = workoutDao.getActiveSessionId() ?: return
+        workoutDao.updateWorkoutDetails(
+            workoutSessionId = workoutSessionId,
+            gymLocation = gymLocation?.trim()?.takeIf { it.isNotEmpty() },
+            notes = notes?.trim()?.takeIf { it.isNotEmpty() },
+        )
+    }
+
+    override suspend fun updateWorkoutExerciseNotes(workoutExerciseId: Long, notes: String?) {
+        workoutDao.updateWorkoutExerciseNotes(
+            workoutExerciseId = workoutExerciseId,
+            notes = notes?.trim()?.takeIf { it.isNotEmpty() },
+        )
+    }
+
+    override suspend fun deleteWorkoutExercise(workoutExerciseId: Long) {
+        workoutDao.deleteWorkoutExercise(workoutExerciseId)
+    }
+
+    override suspend fun updateCompletedWorkoutDetails(
+        workoutSessionId: Long,
+        startedAtEpochMillis: Long,
+        finishedAtEpochMillis: Long,
+        gymLocation: String?,
+        notes: String?,
+    ) {
+        workoutDao.updateCompletedWorkoutDetails(
+            workoutSessionId = workoutSessionId,
+            startedAtEpochMillis = startedAtEpochMillis,
+            finishedAtEpochMillis = finishedAtEpochMillis,
+            gymLocation = gymLocation?.trim()?.takeIf { it.isNotEmpty() },
+            notes = notes?.trim()?.takeIf { it.isNotEmpty() },
+        )
+    }
+
+    override suspend fun deleteCompletedWorkout(workoutSessionId: Long) {
+        workoutDao.deleteWorkout(workoutSessionId)
+    }
+
     override suspend fun finishActiveWorkout() {
         val workoutSessionId = workoutDao.getActiveSessionId() ?: return
         workoutDao.finishWorkout(
@@ -147,6 +217,7 @@ class RoomWorkoutRepository @Inject constructor(
             id = id,
             startedAtEpochMillis = startedAtEpochMillis,
             gymLocation = gymLocation,
+            notes = notes,
             exercises = exerciseRows.map { exerciseRow ->
                 LoggedExercise(
                     id = exerciseRow.workoutExerciseId,
@@ -155,6 +226,7 @@ class RoomWorkoutRepository @Inject constructor(
                     primaryMuscle = exerciseRow.primaryMuscle,
                     equipment = exerciseRow.equipment,
                     orderIndex = exerciseRow.orderIndex,
+                    notes = exerciseRow.notes,
                     sets = setsByExercise[exerciseRow.workoutExerciseId]
                         .orEmpty()
                         .map { setEntry ->
@@ -169,4 +241,27 @@ class RoomWorkoutRepository @Inject constructor(
             },
         )
     }
+
+    private fun WorkoutSessionEntity.toWorkoutDetail(
+        exerciseRows: List<WorkoutExerciseRow>,
+        setEntries: List<SetEntryEntity>,
+    ): WorkoutDetail = WorkoutDetail(
+        id = id,
+        startedAtEpochMillis = startedAtEpochMillis,
+        finishedAtEpochMillis = checkNotNull(finishedAtEpochMillis),
+        gymLocation = gymLocation,
+        notes = notes,
+        exercises = toActiveWorkout(exerciseRows, setEntries).exercises,
+    )
+
+    private fun WorkoutSummaryRow.toModel() = WorkoutSummary(
+        id = id,
+        startedAtEpochMillis = startedAtEpochMillis,
+        finishedAtEpochMillis = finishedAtEpochMillis,
+        gymLocation = gymLocation,
+        notes = notes,
+        exerciseCount = exerciseCount,
+        volume = volume,
+        exerciseNames = exerciseNames,
+    )
 }

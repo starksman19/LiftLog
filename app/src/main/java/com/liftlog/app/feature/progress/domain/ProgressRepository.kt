@@ -6,7 +6,7 @@ import com.liftlog.app.core.model.HistoricalSet
 import kotlinx.coroutines.flow.Flow
 
 interface ProgressRepository {
-    fun observeRecentSessionVolumes(): Flow<List<SessionVolume>>
+    fun observeRecentSessionVolumes(limit: Int): Flow<List<SessionVolume>>
     fun observeExerciseProgress(): Flow<List<ExerciseProgress>>
     fun observeExerciseHistory(exerciseId: Long): Flow<List<HistoricalSet>>
 }

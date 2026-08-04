@@ -9,6 +9,7 @@ import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
 import com.liftlog.app.core.database.model.WorkoutExerciseRow
 import com.liftlog.app.core.database.model.RecentExercisePerformanceRow
+import com.liftlog.app.core.database.model.WorkoutSummaryRow
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -26,12 +27,37 @@ interface WorkoutDao {
 
     @Query(
         """
+        SELECT ws.id AS id,
+               ws.startedAtEpochMillis AS startedAtEpochMillis,
+               ws.finishedAtEpochMillis AS finishedAtEpochMillis,
+               ws.gymLocation AS gymLocation,
+               ws.notes AS notes,
+               COUNT(DISTINCT we.id) AS exerciseCount,
+               COALESCE(SUM(se.weight * se.reps), 0.0) AS volume,
+               COALESCE(GROUP_CONCAT(DISTINCT e.name), '') AS exerciseNames
+        FROM workout_sessions AS ws
+        LEFT JOIN workout_exercises AS we ON we.workoutSessionId = ws.id
+        LEFT JOIN exercises AS e ON e.id = we.exerciseId
+        LEFT JOIN set_entries AS se ON se.workoutExerciseId = we.id
+        WHERE ws.finishedAtEpochMillis IS NOT NULL
+        GROUP BY ws.id
+        ORDER BY ws.finishedAtEpochMillis DESC
+        """,
+    )
+    fun observeCompletedWorkoutSummaries(): Flow<List<WorkoutSummaryRow>>
+
+    @Query("SELECT * FROM workout_sessions WHERE id = :workoutSessionId LIMIT 1")
+    fun observeWorkoutSession(workoutSessionId: Long): Flow<WorkoutSessionEntity?>
+
+    @Query(
+        """
         SELECT we.id AS workoutExerciseId,
                we.exerciseId AS exerciseId,
                e.name AS name,
                e.primaryMuscle AS primaryMuscle,
                e.equipment AS equipment,
-               we.orderIndex AS orderIndex
+               we.orderIndex AS orderIndex,
+               we.notes AS notes
         FROM workout_exercises AS we
         JOIN exercises AS e ON e.id = we.exerciseId
         WHERE we.workoutSessionId = :workoutSessionId
@@ -126,6 +152,33 @@ interface WorkoutDao {
 
     @Query("DELETE FROM set_entries WHERE id = :setEntryId")
     suspend fun deleteSetEntry(setEntryId: Long)
+
+    @Query("UPDATE workout_sessions SET gymLocation = :gymLocation, notes = :notes WHERE id = :workoutSessionId")
+    suspend fun updateWorkoutDetails(workoutSessionId: Long, gymLocation: String?, notes: String?)
+
+    @Query("UPDATE workout_exercises SET notes = :notes WHERE id = :workoutExerciseId")
+    suspend fun updateWorkoutExerciseNotes(workoutExerciseId: Long, notes: String?)
+
+    @Query("DELETE FROM workout_exercises WHERE id = :workoutExerciseId")
+    suspend fun deleteWorkoutExercise(workoutExerciseId: Long)
+
+    @Query(
+        """
+        UPDATE workout_sessions
+        SET startedAtEpochMillis = :startedAtEpochMillis,
+            finishedAtEpochMillis = :finishedAtEpochMillis,
+            gymLocation = :gymLocation,
+            notes = :notes
+        WHERE id = :workoutSessionId
+        """,
+    )
+    suspend fun updateCompletedWorkoutDetails(
+        workoutSessionId: Long,
+        startedAtEpochMillis: Long,
+        finishedAtEpochMillis: Long,
+        gymLocation: String?,
+        notes: String?,
+    )
 
     @Query("UPDATE workout_sessions SET finishedAtEpochMillis = :finishedAtEpochMillis WHERE id = :workoutSessionId")
     suspend fun finishWorkout(workoutSessionId: Long, finishedAtEpochMillis: Long)

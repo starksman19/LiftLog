@@ -21,6 +21,9 @@ import com.liftlog.app.feature.workout.domain.SaveActiveWorkoutAsTemplateUseCase
 import com.liftlog.app.feature.workout.domain.StartWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.StartWorkoutTemplateUseCase
 import com.liftlog.app.feature.workout.domain.UpdateSetUseCase
+import com.liftlog.app.feature.workout.domain.UpdateActiveWorkoutDetailsUseCase
+import com.liftlog.app.feature.workout.domain.UpdateWorkoutExerciseNotesUseCase
+import com.liftlog.app.feature.workout.domain.DeleteWorkoutExerciseUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -46,6 +49,9 @@ class WorkoutViewModel @Inject constructor(
     private val deleteSetUseCase: DeleteSetUseCase,
     private val finishWorkoutUseCase: FinishWorkoutUseCase,
     private val discardWorkoutUseCase: DiscardWorkoutUseCase,
+    private val updateActiveWorkoutDetailsUseCase: UpdateActiveWorkoutDetailsUseCase,
+    private val updateWorkoutExerciseNotesUseCase: UpdateWorkoutExerciseNotesUseCase,
+    private val deleteWorkoutExerciseUseCase: DeleteWorkoutExerciseUseCase,
 ) : ViewModel() {
     private val exercisePendingAddition = MutableStateFlow<Exercise?>(null)
     private val recentPerformances = MutableStateFlow<List<RecentExercisePerformance>>(emptyList())
@@ -139,6 +145,18 @@ class WorkoutViewModel @Inject constructor(
         viewModelScope.launch {
             deleteSetUseCase(setEntryId)
         }
+    }
+
+    fun updateWorkoutDetails(gymLocation: String?, notes: String?) {
+        viewModelScope.launch { updateActiveWorkoutDetailsUseCase(gymLocation, notes) }
+    }
+
+    fun updateWorkoutExerciseNotes(workoutExerciseId: Long, notes: String?) {
+        viewModelScope.launch { updateWorkoutExerciseNotesUseCase(workoutExerciseId, notes) }
+    }
+
+    fun deleteWorkoutExercise(workoutExerciseId: Long) {
+        viewModelScope.launch { deleteWorkoutExerciseUseCase(workoutExerciseId) }
     }
 
     fun finishWorkout() {

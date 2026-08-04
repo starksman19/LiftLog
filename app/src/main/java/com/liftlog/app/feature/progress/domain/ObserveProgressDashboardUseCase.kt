@@ -9,8 +9,8 @@ import kotlinx.coroutines.flow.combine
 class ObserveProgressDashboardUseCase @Inject constructor(
     private val repository: ProgressRepository,
 ) {
-    operator fun invoke(): Flow<ProgressDashboard> = combine(
-        repository.observeRecentSessionVolumes(),
+    operator fun invoke(limit: Int): Flow<ProgressDashboard> = combine(
+        repository.observeRecentSessionVolumes(limit),
         repository.observeExerciseProgress(),
     ) { volumes, exercises ->
         ProgressDashboard(

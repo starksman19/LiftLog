@@ -6,7 +6,9 @@ import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.feature.exercises.domain.EnsureStarterExercisesUseCase
 import com.liftlog.app.feature.exercises.domain.AddCustomExerciseUseCase
+import com.liftlog.app.feature.exercises.domain.DeleteExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
+import com.liftlog.app.feature.exercises.domain.UpdateExerciseUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,6 +27,8 @@ class ExerciseListViewModel @Inject constructor(
     observeExercisesUseCase: ObserveExercisesUseCase,
     private val ensureStarterExercisesUseCase: EnsureStarterExercisesUseCase,
     private val addCustomExerciseUseCase: AddCustomExerciseUseCase,
+    private val updateExerciseUseCase: UpdateExerciseUseCase,
+    private val deleteExerciseUseCase: DeleteExerciseUseCase,
 ) : ViewModel() {
     private val query = MutableStateFlow("")
 
@@ -57,6 +61,14 @@ class ExerciseListViewModel @Inject constructor(
         viewModelScope.launch {
             addCustomExerciseUseCase(draft)
         }
+    }
+
+    fun updateExercise(exerciseId: Long, draft: ExerciseDraft) {
+        viewModelScope.launch { updateExerciseUseCase(exerciseId, draft) }
+    }
+
+    fun deleteExercise(exerciseId: Long) {
+        viewModelScope.launch { deleteExerciseUseCase(exerciseId) }
     }
 }
 

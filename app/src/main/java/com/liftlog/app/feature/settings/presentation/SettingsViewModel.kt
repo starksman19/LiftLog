@@ -11,6 +11,7 @@ import com.liftlog.app.feature.backup.domain.BackupContents
 import com.liftlog.app.feature.backup.domain.BackupSelection
 import com.liftlog.app.feature.backup.domain.InspectBackupUseCase
 import com.liftlog.app.feature.backup.domain.ImportBackupUseCase
+import com.liftlog.app.feature.locations.domain.GymLocationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,18 +28,21 @@ class SettingsViewModel @Inject constructor(
     private val exportBackupUseCase: ExportBackupUseCase,
     private val inspectBackupUseCase: InspectBackupUseCase,
     private val importBackupUseCase: ImportBackupUseCase,
+    private val gymLocationRepository: GymLocationRepository,
 ) : ViewModel() {
     private val operation = MutableStateFlow(BackupOperationState())
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings,
         operation,
-    ) { settings, operationState ->
+        gymLocationRepository.observeLocations(),
+    ) { settings, operationState, locations ->
         SettingsUiState(
             settings = settings,
             isWorking = operationState.isWorking,
             message = operationState.message,
             importPreview = operationState.importPreview,
+            locations = locations,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -84,6 +88,15 @@ class SettingsViewModel @Inject constructor(
         operation.update { it.copy(message = null) }
     }
 
+    fun renameLocation(oldName: String, newName: String) {
+        if (newName.isBlank()) return
+        viewModelScope.launch { gymLocationRepository.rename(oldName, newName.trim()) }
+    }
+
+    fun deleteLocation(name: String) {
+        viewModelScope.launch { gymLocationRepository.delete(name) }
+    }
+
     private fun runBackupOperation(
         action: suspend () -> com.liftlog.app.feature.backup.domain.BackupSummary,
         success: (com.liftlog.app.feature.backup.domain.BackupSummary) -> String,
@@ -106,6 +119,7 @@ data class SettingsUiState(
     val isWorking: Boolean = false,
     val message: String? = null,
     val importPreview: ImportPreview? = null,
+    val locations: List<String> = emptyList(),
 )
 
 data class ImportPreview(

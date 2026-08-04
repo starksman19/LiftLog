@@ -3,6 +3,7 @@ package com.liftlog.app.core.database
 import androidx.room3.Database
 import androidx.room3.RoomDatabase
 import com.liftlog.app.core.database.dao.ExerciseDao
+import com.liftlog.app.core.database.dao.GymLocationDao
 import com.liftlog.app.core.database.dao.BackupDao
 import com.liftlog.app.core.database.dao.ProgressDao
 import com.liftlog.app.core.database.dao.WorkoutDao
@@ -34,4 +35,5 @@ abstract class LiftLogDatabase : RoomDatabase() {
     abstract fun progressDao(): ProgressDao
     abstract fun workoutDao(): WorkoutDao
     abstract fun workoutTemplateDao(): WorkoutTemplateDao
+    abstract fun gymLocationDao(): GymLocationDao
 }

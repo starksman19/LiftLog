@@ -14,8 +14,8 @@ import kotlinx.coroutines.flow.map
 class RoomProgressRepository @Inject constructor(
     private val progressDao: ProgressDao,
 ) : ProgressRepository {
-    override fun observeRecentSessionVolumes(): Flow<List<SessionVolume>> {
-        return progressDao.observeRecentSessionVolumes().map { rows ->
+    override fun observeRecentSessionVolumes(limit: Int): Flow<List<SessionVolume>> {
+        return progressDao.observeRecentSessionVolumes(limit).map { rows ->
             rows.map { row ->
                 SessionVolume(
                     startedAtEpochMillis = row.startedAtEpochMillis,

@@ -28,6 +28,15 @@ interface WorkoutTemplateDao {
     @Query("SELECT exerciseId FROM workout_template_exercises WHERE templateId = :templateId ORDER BY orderIndex")
     suspend fun getExerciseIds(templateId: Long): List<Long>
 
+    @Query("UPDATE workout_templates SET name = :name WHERE id = :templateId")
+    suspend fun updateTemplateName(templateId: Long, name: String)
+
+    @Query("DELETE FROM workout_template_exercises WHERE templateId = :templateId")
+    suspend fun clearTemplateExercises(templateId: Long)
+
+    @Query("DELETE FROM workout_templates WHERE id = :templateId")
+    suspend fun deleteTemplate(templateId: Long)
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertTemplate(template: WorkoutTemplateEntity): Long
 
@@ -49,6 +58,17 @@ interface WorkoutTemplateDao {
     @Transaction
     suspend fun createTemplate(name: String, exerciseIds: List<Long>) {
         val templateId = insertTemplate(WorkoutTemplateEntity(name = name, createdAtEpochMillis = System.currentTimeMillis()))
+        insertTemplateExercises(
+            exerciseIds.mapIndexed { index, exerciseId ->
+                WorkoutTemplateExerciseEntity(templateId = templateId, exerciseId = exerciseId, orderIndex = index)
+            },
+        )
+    }
+
+    @Transaction
+    suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>) {
+        updateTemplateName(templateId, name)
+        clearTemplateExercises(templateId)
         insertTemplateExercises(
             exerciseIds.mapIndexed { index, exerciseId ->
                 WorkoutTemplateExerciseEntity(templateId = templateId, exerciseId = exerciseId, orderIndex = index)

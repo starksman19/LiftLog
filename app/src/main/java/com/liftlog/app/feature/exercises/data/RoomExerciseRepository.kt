@@ -53,6 +53,27 @@ class RoomExerciseRepository @Inject constructor(
         )
     }
 
+    override suspend fun updateExercise(exerciseId: Long, draft: ExerciseDraft) {
+        exerciseDao.updateExerciseWithSearch(
+            ExerciseEntity(
+                id = exerciseId,
+                name = draft.name,
+                primaryMuscle = draft.primaryMuscle,
+                equipment = draft.equipment,
+                category = draft.category.name,
+                gymLocation = draft.gymLocation,
+                youTubeUrl = draft.youTubeUrl,
+                imageUri = draft.imageUri,
+                isCustom = true,
+                createdAtEpochMillis = System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    override suspend fun deleteExercise(exerciseId: Long) {
+        exerciseDao.deleteExercise(exerciseId)
+    }
+
     private fun String.toFtsQuery(): String? {
         val tokens = trim()
             .split(Regex("\\s+"))

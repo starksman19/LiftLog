@@ -5,6 +5,7 @@ import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.Query
 import androidx.room3.Transaction
+import androidx.room3.Update
 import com.liftlog.app.core.database.entity.ExerciseEntity
 import com.liftlog.app.core.database.entity.ExerciseSearchEntity
 import com.liftlog.app.core.database.entity.toSearchEntity
@@ -35,11 +36,26 @@ interface ExerciseDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExerciseSearch(entity: ExerciseSearchEntity)
 
+    @Update
+    suspend fun updateExercise(entity: ExerciseEntity)
+
+    @Query("DELETE FROM exercise_search WHERE rowid = :exerciseId")
+    suspend fun deleteExerciseSearch(exerciseId: Long)
+
+    @Query("DELETE FROM exercises WHERE id = :exerciseId")
+    suspend fun deleteExercise(exerciseId: Long)
+
     @Transaction
     suspend fun insertExerciseWithSearch(entity: ExerciseEntity): Long {
         val id = insertExercise(entity)
         insertExerciseSearch(entity.copy(id = id).toSearchEntity())
         return id
     }
-}
 
+    @Transaction
+    suspend fun updateExerciseWithSearch(entity: ExerciseEntity) {
+        updateExercise(entity)
+        deleteExerciseSearch(entity.id)
+        insertExerciseSearch(entity.toSearchEntity())
+    }
+}

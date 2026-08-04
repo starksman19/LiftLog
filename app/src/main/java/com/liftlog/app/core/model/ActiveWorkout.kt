@@ -4,6 +4,7 @@ data class ActiveWorkout(
     val id: Long,
     val startedAtEpochMillis: Long,
     val gymLocation: String?,
+    val notes: String?,
     val exercises: List<LoggedExercise>,
 )
 
@@ -14,6 +15,7 @@ data class LoggedExercise(
     val primaryMuscle: String,
     val equipment: String,
     val orderIndex: Int,
+    val notes: String?,
     val sets: List<LoggedSet>,
 )
 

@@ -21,7 +21,8 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.BookmarkAdd
-import androidx.compose.material.icons.outlined.PlaylistPlay
+import androidx.compose.material.icons.automirrored.outlined.PlaylistPlay
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -44,7 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.ActiveWorkout
 import com.liftlog.app.core.model.Exercise
@@ -58,6 +59,8 @@ import java.util.Date
 
 @Composable
 fun WorkoutRoute(
+    onHistory: () -> Unit,
+    onManageTemplates: () -> Unit,
     viewModel: WorkoutViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -73,8 +76,13 @@ fun WorkoutRoute(
         onAddSet = viewModel::addSet,
         onUpdateSet = viewModel::updateSet,
         onDeleteSet = viewModel::deleteSet,
+        onUpdateWorkoutDetails = viewModel::updateWorkoutDetails,
+        onUpdateWorkoutExerciseNotes = viewModel::updateWorkoutExerciseNotes,
+        onDeleteWorkoutExercise = viewModel::deleteWorkoutExercise,
         onFinishWorkout = viewModel::finishWorkout,
         onDiscardWorkout = viewModel::discardWorkout,
+        onHistory = onHistory,
+        onManageTemplates = onManageTemplates,
     )
 }
 
@@ -90,8 +98,13 @@ fun WorkoutScreen(
     onAddSet: (Long, Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
     onDeleteSet: (Long) -> Unit,
+    onUpdateWorkoutDetails: (String?, String?) -> Unit,
+    onUpdateWorkoutExerciseNotes: (Long, String?) -> Unit,
+    onDeleteWorkoutExercise: (Long) -> Unit,
     onFinishWorkout: () -> Unit,
     onDiscardWorkout: () -> Unit,
+    onHistory: () -> Unit,
+    onManageTemplates: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val activeWorkout = state.activeWorkout
@@ -101,6 +114,8 @@ fun WorkoutScreen(
             onStartWorkout = onStartWorkout,
             templates = state.templates,
             onStartTemplate = onStartTemplate,
+            onHistory = onHistory,
+            onManageTemplates = onManageTemplates,
             modifier = modifier,
         )
     } else {
@@ -116,6 +131,9 @@ fun WorkoutScreen(
             onAddSet = onAddSet,
             onUpdateSet = onUpdateSet,
             onDeleteSet = onDeleteSet,
+            onUpdateWorkoutDetails = onUpdateWorkoutDetails,
+            onUpdateWorkoutExerciseNotes = onUpdateWorkoutExerciseNotes,
+            onDeleteWorkoutExercise = onDeleteWorkoutExercise,
             onFinishWorkout = onFinishWorkout,
             onDiscardWorkout = onDiscardWorkout,
             modifier = modifier,
@@ -128,6 +146,8 @@ private fun EmptyWorkoutScreen(
     onStartWorkout: (String?) -> Unit,
     templates: List<WorkoutTemplate>,
     onStartTemplate: (Long, String?) -> Unit,
+    onHistory: () -> Unit,
+    onManageTemplates: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var startDialogVisible by remember { mutableStateOf(false) }
@@ -139,11 +159,16 @@ private fun EmptyWorkoutScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(
-            text = "Workout",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Workout",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+            )
+            IconButton(onClick = onHistory) {
+                Icon(Icons.Outlined.History, contentDescription = "Workout history")
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = { startDialogVisible = true }) {
             Icon(
@@ -164,13 +189,17 @@ private fun EmptyWorkoutScreen(
             )
             templates.forEach { template ->
                 OutlinedButton(onClick = { templatePendingStart = template }) {
-                    Icon(Icons.Outlined.PlaylistPlay, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Outlined.PlaylistPlay, contentDescription = null)
                     Text(
                         text = "${template.name} (${template.exerciseCount})",
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
             }
+        }
+        OutlinedButton(onClick = onManageTemplates) {
+            Icon(Icons.Outlined.BookmarkAdd, contentDescription = null)
+            Text("Manage templates", modifier = Modifier.padding(start = 8.dp))
         }
     }
 
@@ -237,11 +266,15 @@ private fun ActiveWorkoutScreen(
     onAddSet: (Long, Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
     onDeleteSet: (Long) -> Unit,
+    onUpdateWorkoutDetails: (String?, String?) -> Unit,
+    onUpdateWorkoutExerciseNotes: (Long, String?) -> Unit,
+    onDeleteWorkoutExercise: (Long) -> Unit,
     onFinishWorkout: () -> Unit,
     onDiscardWorkout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var saveTemplateDialogVisible by remember { mutableStateOf(false) }
+    var workoutDetailsDialogVisible by remember { mutableStateOf(false) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -283,6 +316,12 @@ private fun ActiveWorkoutScreen(
             }
 
             Row {
+                IconButton(onClick = { workoutDetailsDialogVisible = true }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = "Edit workout details",
+                    )
+                }
                 IconButton(
                     onClick = { saveTemplateDialogVisible = true },
                     enabled = activeWorkout.exercises.isNotEmpty(),
@@ -342,6 +381,8 @@ private fun ActiveWorkoutScreen(
                     onAddSet = { weight, reps -> onAddSet(exercise.id, weight, reps) },
                     onUpdateSet = onUpdateSet,
                     onDeleteSet = onDeleteSet,
+                    onUpdateNotes = onUpdateWorkoutExerciseNotes,
+                    onDeleteExercise = onDeleteWorkoutExercise,
                 )
             }
         }
@@ -368,6 +409,55 @@ private fun ActiveWorkoutScreen(
             },
         )
     }
+
+    if (workoutDetailsDialogVisible) {
+        WorkoutDetailsDialog(
+            initialGymLocation = activeWorkout.gymLocation,
+            initialNotes = activeWorkout.notes,
+            onDismiss = { workoutDetailsDialogVisible = false },
+            onSave = { location, notes ->
+                onUpdateWorkoutDetails(location, notes)
+                workoutDetailsDialogVisible = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun WorkoutDetailsDialog(
+    initialGymLocation: String?,
+    initialNotes: String?,
+    onDismiss: () -> Unit,
+    onSave: (String?, String?) -> Unit,
+) {
+    var gymLocation by remember { mutableStateOf(initialGymLocation.orEmpty()) }
+    var notes by remember { mutableStateOf(initialNotes.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Workout details") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = gymLocation,
+                    onValueChange = { gymLocation = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Gym / location") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Workout notes") },
+                    minLines = 3,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(gymLocation, notes) }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -450,15 +540,19 @@ private fun AddExerciseToWorkoutDialog(
 }
 
 @Composable
-private fun LoggedExerciseCard(
+internal fun LoggedExerciseCard(
     exercise: LoggedExercise,
     onAddSet: (Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
     onDeleteSet: (Long) -> Unit,
+    onUpdateNotes: (Long, String?) -> Unit,
+    onDeleteExercise: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var editor by remember { mutableStateOf<SetEditor?>(null) }
     var setPendingDeletion by remember { mutableStateOf<LoggedSet?>(null) }
+    var editNotesVisible by remember { mutableStateOf(false) }
+    var exercisePendingDeletion by remember { mutableStateOf(false) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -489,25 +583,41 @@ private fun LoggedExerciseCard(
                     )
                 }
 
-                OutlinedButton(
-                    onClick = {
-                        val previous = exercise.sets.lastOrNull()
-                        editor = SetEditor(
-                            setEntryId = null,
-                            initialWeight = previous?.weight ?: 0.0,
-                            initialReps = previous?.reps ?: 10,
+                Row {
+                    IconButton(onClick = { editNotesVisible = true }) {
+                        Icon(Icons.Outlined.Edit, contentDescription = "Edit exercise notes")
+                    }
+                    IconButton(onClick = { exercisePendingDeletion = true }) {
+                        Icon(Icons.Outlined.Delete, contentDescription = "Remove exercise from workout")
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val previous = exercise.sets.lastOrNull()
+                            editor = SetEditor(
+                                setEntryId = null,
+                                initialWeight = previous?.weight ?: 0.0,
+                                initialReps = previous?.reps ?: 10,
+                            )
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Add,
+                            contentDescription = null,
                         )
-                    },
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Add,
-                        contentDescription = null,
-                    )
-                    Text(
-                        text = "Set",
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
+                        Text(
+                            text = "Set",
+                            modifier = Modifier.padding(start = 6.dp),
+                        )
+                    }
                 }
+            }
+
+            exercise.notes?.let { notes ->
+                Text(
+                    text = notes,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             if (exercise.sets.isEmpty()) {
@@ -567,6 +677,56 @@ private fun LoggedExerciseCard(
             },
         )
     }
+
+    if (editNotesVisible) {
+        ExerciseNotesDialog(
+            initialNotes = exercise.notes,
+            onDismiss = { editNotesVisible = false },
+            onSave = { notes ->
+                onUpdateNotes(exercise.id, notes)
+                editNotesVisible = false
+            },
+        )
+    }
+
+    if (exercisePendingDeletion) {
+        AlertDialog(
+            onDismissRequest = { exercisePendingDeletion = false },
+            title = { Text("Remove ${exercise.name}?") },
+            text = { Text("Its sets will also be removed from this workout.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteExercise(exercise.id)
+                    exercisePendingDeletion = false
+                }) { Text("Remove") }
+            },
+            dismissButton = { TextButton(onClick = { exercisePendingDeletion = false }) { Text("Cancel") } },
+        )
+    }
+}
+
+@Composable
+private fun ExerciseNotesDialog(
+    initialNotes: String?,
+    onDismiss: () -> Unit,
+    onSave: (String?) -> Unit,
+) {
+    var notes by remember { mutableStateOf(initialNotes.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Exercise notes") },
+        text = {
+            OutlinedTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Notes") },
+                minLines = 3,
+            )
+        },
+        confirmButton = { TextButton(onClick = { onSave(notes) }) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -671,6 +831,7 @@ private fun WorkoutScreenPreview() {
                     id = 1,
                     startedAtEpochMillis = 0,
                     gymLocation = null,
+                    notes = null,
                     exercises = listOf(
                         LoggedExercise(
                             id = 1,
@@ -679,6 +840,7 @@ private fun WorkoutScreenPreview() {
                             primaryMuscle = "Chest",
                             equipment = "Barbell",
                             orderIndex = 0,
+                            notes = "Keep the bar path controlled.",
                             sets = listOf(
                                 LoggedSet(id = 1, setNumber = 1, weight = 80.0, reps = 8),
                                 LoggedSet(id = 2, setNumber = 2, weight = 80.0, reps = 8),
@@ -700,8 +862,13 @@ private fun WorkoutScreenPreview() {
             onAddSet = { _, _, _ -> },
             onUpdateSet = { _, _, _ -> },
             onDeleteSet = {},
+            onUpdateWorkoutDetails = { _, _ -> },
+            onUpdateWorkoutExerciseNotes = { _, _ -> },
+            onDeleteWorkoutExercise = {},
             onFinishWorkout = {},
             onDiscardWorkout = {},
+            onHistory = {},
+            onManageTemplates = {},
         )
     }
 }

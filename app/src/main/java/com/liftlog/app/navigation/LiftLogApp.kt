@@ -28,6 +28,9 @@ import com.liftlog.app.feature.progress.presentation.ProgressRoute
 import com.liftlog.app.feature.progress.presentation.ExerciseHistoryRoute
 import com.liftlog.app.feature.settings.presentation.SettingsRoute
 import com.liftlog.app.feature.workout.presentation.WorkoutRoute
+import com.liftlog.app.feature.workout.presentation.WorkoutHistoryRoute
+import com.liftlog.app.feature.workout.presentation.WorkoutDetailRoute
+import com.liftlog.app.feature.workout.presentation.TemplateManagementRoute
 
 @Composable
 fun LiftLogApp() {
@@ -86,7 +89,28 @@ fun LiftLogApp() {
                 )
             }
             composable(TopLevelDestination.Workout.route) {
-                WorkoutRoute()
+                WorkoutRoute(
+                    onHistory = { navController.navigate("workout-history") },
+                    onManageTemplates = { navController.navigate("templates") },
+                )
+            }
+            composable("workout-history") {
+                WorkoutHistoryRoute(
+                    onBack = navController::navigateUp,
+                    onWorkoutSelected = { workoutId -> navController.navigate("workout/$workoutId") },
+                )
+            }
+            composable("templates") {
+                TemplateManagementRoute(onBack = navController::navigateUp)
+            }
+            composable(
+                route = "workout/{workoutId}",
+                arguments = listOf(navArgument("workoutId") { type = NavType.LongType }),
+            ) { entry ->
+                WorkoutDetailRoute(
+                    workoutId = entry.arguments?.getLong("workoutId") ?: return@composable,
+                    onBack = navController::navigateUp,
+                )
             }
             composable(TopLevelDestination.Progress.route) {
                 ProgressRoute()

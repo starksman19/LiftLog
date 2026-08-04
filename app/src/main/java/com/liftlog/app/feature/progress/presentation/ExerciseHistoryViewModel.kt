@@ -3,6 +3,7 @@ package com.liftlog.app.feature.progress.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liftlog.app.core.model.HistoricalSet
+import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
 import com.liftlog.app.feature.progress.domain.ObserveExerciseHistoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,6 +25,7 @@ class ExerciseHistoryViewModel @Inject constructor(
     ) { exercise, sets ->
         ExerciseHistoryUiState(
             exerciseName = exercise?.name.orEmpty(),
+            exercise = exercise,
             history = sets.groupBy { it.workoutSessionId }
                 .map { (_, sessionSets) ->
                     ExerciseHistorySession(
@@ -41,6 +43,7 @@ class ExerciseHistoryViewModel @Inject constructor(
 
 data class ExerciseHistoryUiState(
     val exerciseName: String = "",
+    val exercise: Exercise? = null,
     val history: List<ExerciseHistorySession> = emptyList(),
 )
 

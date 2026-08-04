@@ -24,6 +24,20 @@ class RoomWorkoutTemplateRepository @Inject constructor(
         templateDao.startTemplate(templateId, gymLocation)
     }
 
+    override suspend fun getTemplateExerciseIds(templateId: Long): List<Long> = templateDao.getExerciseIds(templateId)
+
+    override suspend fun createTemplate(name: String, exerciseIds: List<Long>) {
+        templateDao.createTemplate(name, exerciseIds)
+    }
+
+    override suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>) {
+        templateDao.updateTemplate(templateId, name, exerciseIds)
+    }
+
+    override suspend fun deleteTemplate(templateId: Long) {
+        templateDao.deleteTemplate(templateId)
+    }
+
     private fun WorkoutTemplateRow.toModel() = WorkoutTemplate(
         id = id,
         name = name,

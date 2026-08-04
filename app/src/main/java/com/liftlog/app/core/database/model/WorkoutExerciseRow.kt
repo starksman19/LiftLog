@@ -7,5 +7,5 @@ data class WorkoutExerciseRow(
     val primaryMuscle: String,
     val equipment: String,
     val orderIndex: Int,
+    val notes: String?,
 )
-

@@ -5,6 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,6 +15,7 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -38,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.WeightUnit
+import com.liftlog.app.feature.backup.domain.BackupSection
+import com.liftlog.app.feature.backup.domain.BackupSelection
 
 @Composable
 fun SettingsRoute(
@@ -49,7 +53,9 @@ fun SettingsRoute(
         onWeightUnitChanged = viewModel::setWeightUnit,
         onDefaultRestChanged = viewModel::setDefaultRestSeconds,
         onExport = viewModel::exportTo,
+        onInspectImport = viewModel::inspectImport,
         onImport = viewModel::importFrom,
+        onDismissImportPreview = viewModel::dismissImportPreview,
         onMessageShown = viewModel::clearMessage,
     )
 }
@@ -60,20 +66,23 @@ fun SettingsScreen(
     state: SettingsUiState,
     onWeightUnitChanged: (WeightUnit) -> Unit,
     onDefaultRestChanged: (Int) -> Unit,
-    onExport: (android.net.Uri) -> Unit,
+    onExport: (android.net.Uri, BackupSelection) -> Unit,
+    onInspectImport: (android.net.Uri) -> Unit,
     onImport: (android.net.Uri) -> Unit,
+    onDismissImportPreview: () -> Unit,
     onMessageShown: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    var importUriPendingConfirmation by remember { mutableStateOf<android.net.Uri?>(null) }
+    var exportDialogVisible by remember { mutableStateOf(false) }
+    var exportSelection by remember { mutableStateOf(BackupSelection.Everything) }
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
-        onResult = { uri -> uri?.let(onExport) },
+        onResult = { uri -> uri?.let { onExport(it, exportSelection) } },
     )
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
-        onResult = { uri -> importUriPendingConfirmation = uri },
+        onResult = { uri -> uri?.let(onInspectImport) },
     )
 
     LaunchedEffect(state.message) {
@@ -133,13 +142,8 @@ fun SettingsScreen(
             }
             item {
                 SettingsSection(title = "Data transfer") {
-                    Text(
-                        text = "Move your LiftLog data between phones with a backup file.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                     OutlinedButton(
-                        onClick = { exportLauncher.launch("liftlog-backup.json") },
+                        onClick = { exportDialogVisible = true },
                         enabled = !state.isWorking,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
@@ -159,24 +163,82 @@ fun SettingsScreen(
         }
     }
 
-    importUriPendingConfirmation?.let { uri ->
-        AlertDialog(
-            onDismissRequest = { importUriPendingConfirmation = null },
-            title = { Text("Replace local data?") },
-            text = { Text("Importing a backup replaces all exercises, workouts, sets and settings currently stored in LiftLog.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onImport(uri)
-                        importUriPendingConfirmation = null
-                    },
-                ) { Text("Replace and import") }
-            },
-            dismissButton = {
-                TextButton(onClick = { importUriPendingConfirmation = null }) { Text("Cancel") }
+    if (exportDialogVisible) {
+        ExportSelectionDialog(
+            selection = exportSelection,
+            onSelectionChanged = { exportSelection = it },
+            onDismiss = { exportDialogVisible = false },
+            onConfirm = {
+                exportDialogVisible = false
+                exportLauncher.launch("liftlog-backup.json")
             },
         )
     }
+
+    state.importPreview?.let { preview ->
+        AlertDialog(
+            onDismissRequest = onDismissImportPreview,
+            title = { Text("Import backup") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("The file contains:")
+                    BackupSection.entries
+                        .filter(preview.contents.selection::includes)
+                        .forEach { section -> Text(section.label) }
+                    Text(
+                        text = "${preview.contents.summary.exercises} exercises, ${preview.contents.summary.workouts} workouts, ${preview.contents.summary.sets} sets",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onImport(preview.uri)
+                        onDismissImportPreview()
+                    },
+                ) { Text("Import selected data") }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissImportPreview) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun ExportSelectionDialog(
+    selection: BackupSelection,
+    onSelectionChanged: (BackupSelection) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Export backup") },
+        text = {
+            Column {
+                BackupSection.entries.forEach { section ->
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = selection.includes(section),
+                            onCheckedChange = { checked ->
+                                onSelectionChanged(selection.toggled(section, checked))
+                            },
+                        )
+                        Text(section.label)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = selection.hasAnySelection()) { Text("Choose file") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable

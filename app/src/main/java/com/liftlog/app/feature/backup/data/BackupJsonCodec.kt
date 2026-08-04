@@ -7,21 +7,26 @@ import com.liftlog.app.core.database.entity.WorkoutSessionEntity
 import com.liftlog.app.core.database.model.DatabaseSnapshot
 import com.liftlog.app.core.model.AppSettings
 import com.liftlog.app.core.model.WeightUnit
+import com.liftlog.app.feature.backup.domain.BackupSection
+import com.liftlog.app.feature.backup.domain.BackupSelection
 import org.json.JSONArray
 import org.json.JSONObject
 
 internal object BackupJsonCodec {
-    private const val FormatVersion = 1
+    private const val FormatVersion = 2
 
     fun encode(backup: LiftLogBackup): String = JSONObject().apply {
         put("formatVersion", FormatVersion)
         put("exportedAtEpochMillis", backup.exportedAtEpochMillis)
-        put("settings", JSONObject().apply {
-            put("weightUnit", backup.settings.weightUnit.name)
-            put("defaultRestSeconds", backup.settings.defaultRestSeconds)
-        })
+        put("sections", backup.selection.toJson())
+        backup.settings?.let { settings ->
+            put("settings", JSONObject().apply {
+                put("weightUnit", settings.weightUnit.name)
+                put("defaultRestSeconds", settings.defaultRestSeconds)
+            })
+        }
         put("database", JSONObject().apply {
-            put("exercises", backup.snapshot.exercises.toJsonArray { exercise ->
+            if (backup.selection.exercises) put("exercises", backup.snapshot.exercises.toJsonArray { exercise ->
                 JSONObject().apply {
                     put("id", exercise.id)
                     put("name", exercise.name)
@@ -31,7 +36,7 @@ internal object BackupJsonCodec {
                     put("createdAtEpochMillis", exercise.createdAtEpochMillis)
                 }
             })
-            put("workoutSessions", backup.snapshot.workoutSessions.toJsonArray { session ->
+            if (backup.selection.workoutSessions) put("workoutSessions", backup.snapshot.workoutSessions.toJsonArray { session ->
                 JSONObject().apply {
                     put("id", session.id)
                     put("startedAtEpochMillis", session.startedAtEpochMillis)
@@ -39,7 +44,7 @@ internal object BackupJsonCodec {
                     putNullable("notes", session.notes)
                 }
             })
-            put("workoutExercises", backup.snapshot.workoutExercises.toJsonArray { exercise ->
+            if (backup.selection.workoutExercises) put("workoutExercises", backup.snapshot.workoutExercises.toJsonArray { exercise ->
                 JSONObject().apply {
                     put("id", exercise.id)
                     put("workoutSessionId", exercise.workoutSessionId)
@@ -48,7 +53,7 @@ internal object BackupJsonCodec {
                     putNullable("notes", exercise.notes)
                 }
             })
-            put("setEntries", backup.snapshot.setEntries.toJsonArray { set ->
+            if (backup.selection.setEntries) put("setEntries", backup.snapshot.setEntries.toJsonArray { set ->
                 JSONObject().apply {
                     put("id", set.id)
                     put("workoutExerciseId", set.workoutExerciseId)
@@ -66,18 +71,23 @@ internal object BackupJsonCodec {
 
     fun decode(source: String): LiftLogBackup {
         val root = JSONObject(source)
-        require(root.optInt("formatVersion", -1) == FormatVersion) {
+        val formatVersion = root.optInt("formatVersion", -1)
+        require(formatVersion == 1 || formatVersion == FormatVersion) {
             "This LiftLog backup format is not supported."
         }
-
-        val settingsJson = root.getJSONObject("settings")
-        val settings = AppSettings(
-            weightUnit = settingsJson.getString("weightUnit").toWeightUnit(),
-            defaultRestSeconds = settingsJson.getInt("defaultRestSeconds").coerceIn(0, 600),
-        )
+        val selection = if (formatVersion == 1) BackupSelection.Everything else root.getJSONObject("sections").toSelection()
+        require(selection.hasAnySelection()) { "The backup does not contain any selected data." }
+        val settings = if (selection.settings) root.getJSONObject("settings").let { settingsJson ->
+            AppSettings(
+                weightUnit = settingsJson.getString("weightUnit").toWeightUnit(),
+                defaultRestSeconds = settingsJson.getInt("defaultRestSeconds").coerceIn(0, 600),
+            )
+        } else {
+            null
+        }
         val database = root.getJSONObject("database")
         val snapshot = DatabaseSnapshot(
-            exercises = database.getJSONArray("exercises").mapJson { item ->
+            exercises = database.arrayFor("exercises", selection.exercises).mapJson { item ->
                 ExerciseEntity(
                     id = item.positiveLong("id"),
                     name = item.nonBlankString("name"),
@@ -87,7 +97,7 @@ internal object BackupJsonCodec {
                     createdAtEpochMillis = item.getLong("createdAtEpochMillis"),
                 )
             },
-            workoutSessions = database.getJSONArray("workoutSessions").mapJson { item ->
+            workoutSessions = database.arrayFor("workoutSessions", selection.workoutSessions).mapJson { item ->
                 WorkoutSessionEntity(
                     id = item.positiveLong("id"),
                     startedAtEpochMillis = item.getLong("startedAtEpochMillis"),
@@ -95,7 +105,7 @@ internal object BackupJsonCodec {
                     notes = item.optionalString("notes"),
                 )
             },
-            workoutExercises = database.getJSONArray("workoutExercises").mapJson { item ->
+            workoutExercises = database.arrayFor("workoutExercises", selection.workoutExercises).mapJson { item ->
                 WorkoutExerciseEntity(
                     id = item.positiveLong("id"),
                     workoutSessionId = item.positiveLong("workoutSessionId"),
@@ -104,7 +114,7 @@ internal object BackupJsonCodec {
                     notes = item.optionalString("notes"),
                 )
             },
-            setEntries = database.getJSONArray("setEntries").mapJson { item ->
+            setEntries = database.arrayFor("setEntries", selection.setEntries).mapJson { item ->
                 SetEntryEntity(
                     id = item.positiveLong("id"),
                     workoutExerciseId = item.positiveLong("workoutExerciseId"),
@@ -123,6 +133,7 @@ internal object BackupJsonCodec {
             exportedAtEpochMillis = root.getLong("exportedAtEpochMillis"),
             settings = settings,
             snapshot = snapshot,
+            selection = selection,
         )
     }
 
@@ -133,6 +144,26 @@ internal object BackupJsonCodec {
     private fun <T> JSONArray.mapJson(mapper: (JSONObject) -> T): List<T> = buildList {
         repeat(length()) { index -> add(mapper(getJSONObject(index))) }
     }
+
+    private fun JSONObject.arrayFor(name: String, included: Boolean): JSONArray {
+        return if (included) getJSONArray(name) else JSONArray()
+    }
+
+    private fun BackupSelection.toJson(): JSONObject = JSONObject().apply {
+        put("settings", settings)
+        put("exercises", exercises)
+        put("workoutSessions", workoutSessions)
+        put("workoutExercises", workoutExercises)
+        put("setEntries", setEntries)
+    }
+
+    private fun JSONObject.toSelection(): BackupSelection = BackupSelection(
+        settings = getBoolean("settings"),
+        exercises = getBoolean("exercises"),
+        workoutSessions = getBoolean("workoutSessions"),
+        workoutExercises = getBoolean("workoutExercises"),
+        setEntries = getBoolean("setEntries"),
+    ).normalized()
 
     private fun JSONObject.putNullable(name: String, value: Any?) {
         put(name, value ?: JSONObject.NULL)
@@ -176,6 +207,7 @@ internal object BackupJsonCodec {
 
 internal data class LiftLogBackup(
     val exportedAtEpochMillis: Long,
-    val settings: AppSettings,
+    val settings: AppSettings?,
     val snapshot: DatabaseSnapshot,
+    val selection: BackupSelection,
 )

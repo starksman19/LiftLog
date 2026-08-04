@@ -31,6 +31,9 @@ interface BackupDao {
     suspend fun insertExercises(entities: List<ExerciseEntity>)
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertExercise(entity: ExerciseEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertExerciseSearch(entities: List<ExerciseSearchEntity>)
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
@@ -54,8 +57,43 @@ interface BackupDao {
     @Query("DELETE FROM exercise_search")
     suspend fun clearExerciseSearch()
 
+    @Query("DELETE FROM exercise_search WHERE rowid = :exerciseId")
+    suspend fun deleteExerciseSearch(exerciseId: Long)
+
     @Query("DELETE FROM exercises")
     suspend fun clearExercises()
+
+    @Query(
+        """
+        SELECT id
+        FROM exercises
+        WHERE name = :name COLLATE NOCASE
+          AND primaryMuscle = :primaryMuscle COLLATE NOCASE
+          AND equipment = :equipment COLLATE NOCASE
+        LIMIT 1
+        """,
+    )
+    suspend fun findExerciseId(name: String, primaryMuscle: String, equipment: String): Long?
+
+    @Query(
+        """
+        UPDATE exercises
+        SET name = :name,
+            primaryMuscle = :primaryMuscle,
+            equipment = :equipment,
+            isCustom = :isCustom,
+            createdAtEpochMillis = :createdAtEpochMillis
+        WHERE id = :exerciseId
+        """,
+    )
+    suspend fun updateExercise(
+        exerciseId: Long,
+        name: String,
+        primaryMuscle: String,
+        equipment: String,
+        isCustom: Boolean,
+        createdAtEpochMillis: Long,
+    )
 
     @Transaction
     suspend fun snapshot(): DatabaseSnapshot = DatabaseSnapshot(
@@ -79,6 +117,48 @@ interface BackupDao {
         }
         if (snapshot.workoutSessions.isNotEmpty()) insertWorkoutSessions(snapshot.workoutSessions)
         if (snapshot.workoutExercises.isNotEmpty()) insertWorkoutExercises(snapshot.workoutExercises)
+        if (snapshot.setEntries.isNotEmpty()) insertSetEntries(snapshot.setEntries)
+    }
+
+    @Transaction
+    suspend fun mergeExercisesAndReplaceWorkouts(
+        snapshot: DatabaseSnapshot,
+        replaceWorkoutData: Boolean,
+    ) {
+        val importedToLocalExerciseIds = mutableMapOf<Long, Long>()
+        for (exercise in snapshot.exercises) {
+            val existingId = findExerciseId(exercise.name, exercise.primaryMuscle, exercise.equipment)
+            val localId = existingId ?: insertExercise(exercise.copy(id = 0))
+            if (existingId != null) {
+                updateExercise(
+                    exerciseId = existingId,
+                    name = exercise.name,
+                    primaryMuscle = exercise.primaryMuscle,
+                    equipment = exercise.equipment,
+                    isCustom = exercise.isCustom,
+                    createdAtEpochMillis = exercise.createdAtEpochMillis,
+                )
+            }
+            deleteExerciseSearch(localId)
+            insertExerciseSearch(listOf(exercise.copy(id = localId).toSearchEntity()))
+            importedToLocalExerciseIds[exercise.id] = localId
+        }
+
+        if (!replaceWorkoutData) return
+
+        clearSetEntries()
+        clearWorkoutExercises()
+        clearWorkoutSessions()
+        if (snapshot.workoutSessions.isNotEmpty()) insertWorkoutSessions(snapshot.workoutSessions)
+        if (snapshot.workoutExercises.isNotEmpty()) {
+            insertWorkoutExercises(
+                snapshot.workoutExercises.map { workoutExercise ->
+                    workoutExercise.copy(
+                        exerciseId = checkNotNull(importedToLocalExerciseIds[workoutExercise.exerciseId]),
+                    )
+                },
+            )
+        }
         if (snapshot.setEntries.isNotEmpty()) insertSetEntries(snapshot.setEntries)
     }
 }

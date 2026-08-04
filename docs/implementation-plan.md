@@ -74,3 +74,6 @@ LiftLog starts as an offline-first gym progress tracker. The first version shoul
 - IDs are retained inside the backup so all relationships remain valid after restoring on another phone.
 - Import replaces local LiftLog data only after the user confirms it in the UI.
 - A backup includes a format version and is rejected when it is unsupported or malformed.
+- Before export, the user chooses settings, exercises and/or the complete workout-data package.
+- Import detects the sections present in the file and changes only those sections.
+- Exercises are merged by name, primary muscle and equipment; matching local entries are updated and new ones are added.

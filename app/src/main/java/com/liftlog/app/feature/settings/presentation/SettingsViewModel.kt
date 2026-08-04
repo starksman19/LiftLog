@@ -7,6 +7,9 @@ import com.liftlog.app.core.datastore.SettingsRepository
 import com.liftlog.app.core.model.AppSettings
 import com.liftlog.app.core.model.WeightUnit
 import com.liftlog.app.feature.backup.domain.ExportBackupUseCase
+import com.liftlog.app.feature.backup.domain.BackupContents
+import com.liftlog.app.feature.backup.domain.BackupSelection
+import com.liftlog.app.feature.backup.domain.InspectBackupUseCase
 import com.liftlog.app.feature.backup.domain.ImportBackupUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,6 +25,7 @@ import kotlinx.coroutines.launch
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val exportBackupUseCase: ExportBackupUseCase,
+    private val inspectBackupUseCase: InspectBackupUseCase,
     private val importBackupUseCase: ImportBackupUseCase,
 ) : ViewModel() {
     private val operation = MutableStateFlow(BackupOperationState())
@@ -34,6 +38,7 @@ class SettingsViewModel @Inject constructor(
             settings = settings,
             isWorking = operationState.isWorking,
             message = operationState.message,
+            importPreview = operationState.importPreview,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -49,10 +54,26 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setDefaultRestSeconds(seconds) }
     }
 
-    fun exportTo(uri: Uri) = runBackupOperation(
-        action = { exportBackupUseCase(uri) },
+    fun exportTo(uri: Uri, selection: BackupSelection) = runBackupOperation(
+        action = { exportBackupUseCase(uri, selection) },
         success = { summary -> "Exported ${summary.workouts} workouts and ${summary.sets} sets." },
     )
+
+    fun inspectImport(uri: Uri) {
+        if (operation.value.isWorking) return
+        viewModelScope.launch {
+            operation.value = BackupOperationState(isWorking = true)
+            val result = runCatching { inspectBackupUseCase(uri) }
+            operation.value = result.fold(
+                onSuccess = { contents -> BackupOperationState(importPreview = ImportPreview(uri, contents)) },
+                onFailure = { error -> BackupOperationState(message = "Backup failed: ${error.message ?: "unknown error"}") },
+            )
+        }
+    }
+
+    fun dismissImportPreview() {
+        operation.update { it.copy(importPreview = null) }
+    }
 
     fun importFrom(uri: Uri) = runBackupOperation(
         action = { importBackupUseCase(uri) },
@@ -84,9 +105,16 @@ data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
     val isWorking: Boolean = false,
     val message: String? = null,
+    val importPreview: ImportPreview? = null,
+)
+
+data class ImportPreview(
+    val uri: Uri,
+    val contents: BackupContents,
 )
 
 private data class BackupOperationState(
     val isWorking: Boolean = false,
     val message: String? = null,
+    val importPreview: ImportPreview? = null,
 )

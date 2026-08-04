@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.outlined.PlaylistPlay
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -54,9 +55,12 @@ import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.core.model.LoggedExercise
 import com.liftlog.app.core.model.LoggedSet
+import com.liftlog.app.core.model.RecentExercisePerformance
 import com.liftlog.app.core.model.WorkoutTemplate
 import com.liftlog.app.core.ui.theme.LiftLogTheme
 import com.liftlog.app.feature.exercises.presentation.CustomExerciseDialog
+import java.text.DateFormat
+import java.util.Date
 
 @Composable
 fun WorkoutRoute(
@@ -73,6 +77,8 @@ fun WorkoutRoute(
         onStartTemplate = viewModel::startTemplate,
         onAddExercises = viewModel::addExercises,
         onCreateAndAddExercise = viewModel::createAndAddExercise,
+        onOpenExerciseHistory = viewModel::openExerciseHistory,
+        onDismissExerciseHistory = viewModel::dismissExerciseHistory,
         onAddSet = viewModel::addSet,
         onUpdateSet = viewModel::updateSet,
         onDeleteSet = viewModel::deleteSet,
@@ -94,6 +100,8 @@ fun WorkoutScreen(
     onStartTemplate: (Long, String?) -> Unit,
     onAddExercises: (List<Long>) -> Unit,
     onCreateAndAddExercise: (ExerciseDraft) -> Unit,
+    onOpenExerciseHistory: (Long, String) -> Unit,
+    onDismissExerciseHistory: () -> Unit,
     onAddSet: (Long, Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
     onDeleteSet: (Long) -> Unit,
@@ -126,6 +134,7 @@ fun WorkoutScreen(
             onSaveActiveWorkoutAsTemplate = onSaveActiveWorkoutAsTemplate,
             onAddExercises = onAddExercises,
             onCreateAndAddExercise = onCreateAndAddExercise,
+            onOpenExerciseHistory = onOpenExerciseHistory,
             onAddSet = onAddSet,
             onUpdateSet = onUpdateSet,
             onDeleteSet = onDeleteSet,
@@ -135,6 +144,13 @@ fun WorkoutScreen(
             onFinishWorkout = onFinishWorkout,
             onDiscardWorkout = onDiscardWorkout,
             modifier = modifier,
+        )
+    }
+
+    state.exerciseHistory?.let { history ->
+        ExerciseHistoryDialog(
+            history = history,
+            onDismiss = onDismissExerciseHistory,
         )
     }
 }
@@ -257,6 +273,7 @@ private fun ActiveWorkoutScreen(
     onSaveActiveWorkoutAsTemplate: (String) -> Unit,
     onAddExercises: (List<Long>) -> Unit,
     onCreateAndAddExercise: (ExerciseDraft) -> Unit,
+    onOpenExerciseHistory: (Long, String) -> Unit,
     onAddSet: (Long, Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
     onDeleteSet: (Long) -> Unit,
@@ -388,6 +405,7 @@ private fun ActiveWorkoutScreen(
                     onDeleteSet = onDeleteSet,
                     onUpdateNotes = onUpdateWorkoutExerciseNotes,
                     onDeleteExercise = onDeleteWorkoutExercise,
+                    onShowHistory = onOpenExerciseHistory,
                 )
             }
         }
@@ -603,6 +621,7 @@ internal fun LoggedExerciseCard(
     onDeleteSet: (Long) -> Unit,
     onUpdateNotes: (Long, String?) -> Unit,
     onDeleteExercise: (Long) -> Unit,
+    onShowHistory: ((Long, String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     var editor by remember { mutableStateOf<SetEditor?>(null) }
@@ -647,6 +666,11 @@ internal fun LoggedExerciseCard(
                 Row {
                     IconButton(onClick = { editNotesVisible = true }) {
                         Icon(Icons.Outlined.Edit, contentDescription = "Edit exercise notes")
+                    }
+                    if (onShowHistory != null) {
+                        IconButton(onClick = { onShowHistory(exercise.exerciseId, exercise.name) }) {
+                            Icon(Icons.Outlined.Info, contentDescription = "View recent exercise results")
+                        }
                     }
                     IconButton(onClick = { exercisePendingDeletion = true }) {
                         Icon(Icons.Outlined.Delete, contentDescription = "Remove exercise from workout")
@@ -764,6 +788,44 @@ internal fun LoggedExerciseCard(
             dismissButton = { TextButton(onClick = { exercisePendingDeletion = false }) { Text("Cancel") } },
         )
     }
+}
+
+@Composable
+private fun ExerciseHistoryDialog(
+    history: ExerciseHistoryDialogState,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Recent results: ${history.exerciseName}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (history.performances.isEmpty()) {
+                    Text(
+                        "No completed workouts have been recorded for this exercise yet.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    history.performances.forEach { performance ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(performance.finishedAtEpochMillis)),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            performance.sets.forEach { set ->
+                                Text(
+                                    "Set ${set.setNumber}: ${set.weight.clean()} kg x ${set.reps}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
 }
 
 @Composable
@@ -919,6 +981,8 @@ private fun WorkoutScreenPreview() {
             onStartTemplate = { _, _ -> },
             onAddExercises = {},
             onCreateAndAddExercise = {},
+            onOpenExerciseHistory = { _, _ -> },
+            onDismissExerciseHistory = {},
             onAddSet = { _, _, _ -> },
             onUpdateSet = { _, _, _ -> },
             onDeleteSet = {},

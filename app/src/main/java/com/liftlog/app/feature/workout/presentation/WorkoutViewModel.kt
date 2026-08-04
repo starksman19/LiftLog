@@ -6,6 +6,7 @@ import com.liftlog.app.core.model.ActiveWorkout
 import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.ExerciseDraft
+import com.liftlog.app.core.model.RecentExercisePerformance
 import com.liftlog.app.core.model.WorkoutTemplate
 import com.liftlog.app.feature.exercises.domain.AddCustomExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.EnsureStarterExercisesUseCase
@@ -16,6 +17,7 @@ import com.liftlog.app.feature.workout.domain.AddSetUseCase
 import com.liftlog.app.feature.workout.domain.DiscardWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.DeleteSetUseCase
 import com.liftlog.app.feature.workout.domain.FinishWorkoutUseCase
+import com.liftlog.app.feature.workout.domain.GetRecentExercisePerformancesUseCase
 import com.liftlog.app.feature.workout.domain.ObserveActiveWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.ObserveWorkoutTemplatesUseCase
 import com.liftlog.app.feature.workout.domain.SaveActiveWorkoutAsTemplateUseCase
@@ -29,6 +31,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -42,6 +45,7 @@ class WorkoutViewModel @Inject constructor(
     private val startWorkoutUseCase: StartWorkoutUseCase,
     private val addExerciseToActiveWorkoutUseCase: AddExerciseToActiveWorkoutUseCase,
     private val addCustomExerciseUseCase: AddCustomExerciseUseCase,
+    private val getRecentExercisePerformancesUseCase: GetRecentExercisePerformancesUseCase,
     private val saveActiveWorkoutAsTemplateUseCase: SaveActiveWorkoutAsTemplateUseCase,
     private val startWorkoutTemplateUseCase: StartWorkoutTemplateUseCase,
     private val addSetUseCase: AddSetUseCase,
@@ -54,12 +58,15 @@ class WorkoutViewModel @Inject constructor(
     private val deleteWorkoutExerciseUseCase: DeleteWorkoutExerciseUseCase,
     gymLocationRepository: GymLocationRepository,
 ) : ViewModel() {
+    private val exerciseHistory = MutableStateFlow<ExerciseHistoryDialogState?>(null)
+
     val uiState: StateFlow<WorkoutUiState> = combine(
         observeActiveWorkoutUseCase(),
         observeExercisesUseCase(""),
         observeWorkoutTemplatesUseCase(),
         gymLocationRepository.observeLocations(),
-    ) { activeWorkout, exercises, templates, locations ->
+        exerciseHistory,
+    ) { activeWorkout, exercises, templates, locations, history ->
         WorkoutUiState(
             activeWorkout = activeWorkout,
             availableExercises = exercises
@@ -69,6 +76,7 @@ class WorkoutViewModel @Inject constructor(
                 },
             templates = templates,
             locations = locations,
+            exerciseHistory = history,
         )
     }
         .stateIn(
@@ -118,6 +126,19 @@ class WorkoutViewModel @Inject constructor(
             val exerciseId = addCustomExerciseUseCase(draft)
             addExerciseToActiveWorkoutUseCase(exerciseId, null)
         }
+    }
+
+    fun openExerciseHistory(exerciseId: Long, exerciseName: String) {
+        viewModelScope.launch {
+            exerciseHistory.value = ExerciseHistoryDialogState(
+                exerciseName = exerciseName,
+                performances = getRecentExercisePerformancesUseCase(exerciseId),
+            )
+        }
+    }
+
+    fun dismissExerciseHistory() {
+        exerciseHistory.value = null
     }
 
     fun addSet(workoutExerciseId: Long, weight: Double, reps: Int) {
@@ -172,4 +193,10 @@ data class WorkoutUiState(
     val availableExercises: List<Exercise> = emptyList(),
     val templates: List<WorkoutTemplate> = emptyList(),
     val locations: List<String> = emptyList(),
+    val exerciseHistory: ExerciseHistoryDialogState? = null,
+)
+
+data class ExerciseHistoryDialogState(
+    val exerciseName: String,
+    val performances: List<RecentExercisePerformance>,
 )

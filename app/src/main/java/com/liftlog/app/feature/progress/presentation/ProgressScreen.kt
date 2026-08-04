@@ -34,6 +34,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.ExerciseProgress
 import com.liftlog.app.core.model.SessionVolume
+import com.liftlog.app.core.ui.localization.t
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -62,7 +63,7 @@ fun ProgressScreen(
     ) {
         item {
             Text(
-                text = "Progress",
+                text = t("Progress"),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
             )
@@ -75,7 +76,7 @@ fun ProgressScreen(
                         selected = state.selectedRange == range,
                         onClick = { onRangeChanged(range) },
                         shape = SegmentedButtonDefaults.itemShape(index, 2),
-                        label = { Text("$range workouts") },
+                        label = { Text(t("$range workouts", "$range treningów")) },
                     )
                 }
             }
@@ -88,12 +89,12 @@ fun ProgressScreen(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 DashboardStat(
-                    label = "Last 7 workouts",
+                    label = t("Last 7 workouts", "Ostatnie treningi"),
                     value = workouts.toString(),
                     modifier = Modifier.weight(1f),
                 )
                 DashboardStat(
-                    label = "Training volume",
+                    label = t("Training volume", "Objętość treningowa"),
                     value = "${totalVolume.compact()} kg",
                     modifier = Modifier.weight(1f),
                 )
@@ -102,7 +103,7 @@ fun ProgressScreen(
 
         item {
             Text(
-                text = "Exercise records",
+                text = t("Exercise records", "Rekordy ćwiczeń"),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -111,7 +112,7 @@ fun ProgressScreen(
         if (state.exercises.isEmpty()) {
             item {
                 Text(
-                    text = "Finish a workout to see your records here.",
+                    text = t("Finish a workout to see your records here.", "Ukończ trening, aby zobaczyć tutaj swoje rekordy."),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -144,12 +145,12 @@ private fun VolumeChartCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "Workout volume",
+                text = t("Workout volume", "Objętość treningu"),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = if (volumes.isEmpty()) "No completed workouts yet" else "Last ${volumes.size} workouts",
+                text = if (volumes.isEmpty()) t("No completed workouts yet", "Brak ukończonych treningów") else t("Last ${volumes.size} workouts", "Ostatnie ${volumes.size} treningów"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -267,14 +268,14 @@ private fun ExerciseProgressCard(
                 fontWeight = FontWeight.SemiBold,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ProgressMetric("Best weight", "${exercise.maxWeight.compact()} kg")
+                ProgressMetric(t("Best weight", "Najlepszy ciężar"), "${exercise.maxWeight.compact()} kg")
                 Spacer(modifier = Modifier.width(20.dp))
-                ProgressMetric("Best reps", exercise.maxReps.toString())
+                ProgressMetric(t("Best reps", "Najwięcej powtórzeń"), exercise.maxReps.toString())
                 Spacer(modifier = Modifier.width(20.dp))
-                ProgressMetric("Workouts", exercise.workoutCount.toString())
+                ProgressMetric(t("Workouts", "Treningi"), exercise.workoutCount.toString())
             }
             Text(
-                text = "Last trained ${exercise.lastPerformedAtEpochMillis.shortDate()}",
+                text = t("Last trained ${exercise.lastPerformedAtEpochMillis.shortDate()}", "Ostatni trening: ${exercise.lastPerformedAtEpochMillis.shortDate()}"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

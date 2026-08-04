@@ -44,8 +44,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.WeightUnit
+import com.liftlog.app.core.model.AppLanguage
 import com.liftlog.app.feature.backup.domain.BackupSection
 import com.liftlog.app.feature.backup.domain.BackupSelection
+import com.liftlog.app.core.ui.localization.t
 
 @Composable
 fun SettingsRoute(
@@ -55,6 +57,7 @@ fun SettingsRoute(
     SettingsScreen(
         state = state,
         onWeightUnitChanged = viewModel::setWeightUnit,
+        onLanguageChanged = viewModel::setLanguage,
         onDefaultRestChanged = viewModel::setDefaultRestSeconds,
         onExport = viewModel::exportTo,
         onInspectImport = viewModel::inspectImport,
@@ -71,6 +74,7 @@ fun SettingsRoute(
 fun SettingsScreen(
     state: SettingsUiState,
     onWeightUnitChanged: (WeightUnit) -> Unit,
+    onLanguageChanged: (AppLanguage) -> Unit,
     onDefaultRestChanged: (Int) -> Unit,
     onExport: (android.net.Uri, BackupSelection) -> Unit,
     onInspectImport: (android.net.Uri) -> Unit,
@@ -117,29 +121,43 @@ fun SettingsScreen(
         ) {
             item {
                 Text(
-                    text = "Settings",
+                    text = t("Settings"),
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                 )
             }
             item {
-                SettingsSection(title = "Units") {
+                SettingsSection(title = t("Language")) {
                     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                        WeightUnit.entries.forEachIndexed { index, unit ->
+                        AppLanguage.entries.forEachIndexed { index, language ->
                             SegmentedButton(
-                                selected = state.settings.weightUnit == unit,
-                                onClick = { onWeightUnitChanged(unit) },
-                                shape = SegmentedButtonDefaults.itemShape(index, WeightUnit.entries.size),
-                                label = { Text(if (unit == WeightUnit.Kilograms) "Kilograms" else "Pounds") },
+                                selected = state.language == language,
+                                onClick = { onLanguageChanged(language) },
+                                shape = SegmentedButtonDefaults.itemShape(index, AppLanguage.entries.size),
+                                label = { Text(t(if (language == AppLanguage.English) "English" else "Polish")) },
                             )
                         }
                     }
                 }
             }
             item {
-                SettingsSection(title = "Default rest") {
+                SettingsSection(title = t("Units")) {
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        WeightUnit.entries.forEachIndexed { index, unit ->
+                            SegmentedButton(
+                                selected = state.settings.weightUnit == unit,
+                                onClick = { onWeightUnitChanged(unit) },
+                                shape = SegmentedButtonDefaults.itemShape(index, WeightUnit.entries.size),
+                                label = { Text(t(if (unit == WeightUnit.Kilograms) "Kilograms" else "Pounds")) },
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                SettingsSection(title = t("Default rest")) {
                     Text(
-                        text = "${state.settings.defaultRestSeconds} seconds",
+                        text = t("${state.settings.defaultRestSeconds} seconds", "${state.settings.defaultRestSeconds} sekund"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -152,7 +170,7 @@ fun SettingsScreen(
             }
             if (state.locations.isNotEmpty()) {
                 item {
-                    SettingsSection(title = "Gym locations") {
+                    SettingsSection(title = t("Gym locations", "Lokalizacje siłowni")) {
                         state.locations.forEach { location ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -162,10 +180,10 @@ fun SettingsScreen(
                                 Text(location)
                                 Row {
                                     IconButton(onClick = { locationPendingEdit = location }) {
-                                        androidx.compose.material3.Icon(Icons.Outlined.Edit, "Rename location")
+                                        androidx.compose.material3.Icon(Icons.Outlined.Edit, t("Rename location"))
                                     }
                                     IconButton(onClick = { locationPendingDelete = location }) {
-                                        androidx.compose.material3.Icon(Icons.Outlined.Delete, "Delete location")
+                                        androidx.compose.material3.Icon(Icons.Outlined.Delete, t("Delete location", "Usuń lokalizację"))
                                     }
                                 }
                             }
@@ -174,14 +192,14 @@ fun SettingsScreen(
                 }
             }
             item {
-                SettingsSection(title = "Data transfer") {
+                SettingsSection(title = t("Data transfer")) {
                     OutlinedButton(
                         onClick = { exportDialogVisible = true },
                         enabled = !state.isWorking,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         androidx.compose.material3.Icon(Icons.Outlined.FileDownload, contentDescription = null)
-                        Text("Export backup", modifier = Modifier.padding(start = 8.dp))
+                        Text(t("Export backup"), modifier = Modifier.padding(start = 8.dp))
                     }
                     Button(
                         onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) },
@@ -189,7 +207,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         androidx.compose.material3.Icon(Icons.Outlined.FileUpload, contentDescription = null)
-                        Text("Import backup", modifier = Modifier.padding(start = 8.dp))
+                        Text(t("Import backup"), modifier = Modifier.padding(start = 8.dp))
                     }
                 }
             }
@@ -211,15 +229,18 @@ fun SettingsScreen(
     state.importPreview?.let { preview ->
         AlertDialog(
             onDismissRequest = onDismissImportPreview,
-            title = { Text("Import backup") },
+            title = { Text(t("Import backup")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("The file contains:")
+                    Text(t("The file contains:", "Plik zawiera:"))
                     BackupSection.entries
                         .filter(preview.contents.selection::includes)
-                        .forEach { section -> Text(section.label) }
+                        .forEach { section -> Text(t(section.label)) }
                     Text(
-                        text = "${preview.contents.summary.exercises} exercises, ${preview.contents.summary.workouts} workouts, ${preview.contents.summary.sets} sets, ${preview.contents.summary.templates} templates",
+                        text = t(
+                            "${preview.contents.summary.exercises} exercises, ${preview.contents.summary.workouts} workouts, ${preview.contents.summary.sets} sets, ${preview.contents.summary.templates} templates",
+                            "${preview.contents.summary.exercises} ćwiczeń, ${preview.contents.summary.workouts} treningów, ${preview.contents.summary.sets} serii, ${preview.contents.summary.templates} szablonów",
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -231,10 +252,10 @@ fun SettingsScreen(
                         onImport(preview.uri)
                         onDismissImportPreview()
                     },
-                ) { Text("Import selected data") }
+                ) { Text(t("Import selected data", "Importuj wybrane dane")) }
             },
             dismissButton = {
-                TextButton(onClick = onDismissImportPreview) { Text("Cancel") }
+                TextButton(onClick = onDismissImportPreview) { Text(t("Cancel")) }
             },
         )
     }
@@ -252,12 +273,12 @@ fun SettingsScreen(
     locationPendingDelete?.let { name ->
         AlertDialog(
             onDismissRequest = { locationPendingDelete = null },
-            title = { Text("Delete $name?") },
-            text = { Text("This removes the location from machines and workout records, but does not delete the workouts.") },
+            title = { Text(t("Delete $name?", "Usunąć $name?") ) },
+            text = { Text(t("This removes the location from machines and workout records, but does not delete the workouts.", "Spowoduje to usunięcie lokalizacji z maszyn i zapisów treningowych, ale nie usunie treningów.")) },
             confirmButton = {
-                TextButton(onClick = { onDeleteLocation(name); locationPendingDelete = null }) { Text("Delete") }
+                TextButton(onClick = { onDeleteLocation(name); locationPendingDelete = null }) { Text(t("Delete")) }
             },
-            dismissButton = { TextButton(onClick = { locationPendingDelete = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { locationPendingDelete = null }) { Text(t("Cancel")) } },
         )
     }
 }
@@ -271,12 +292,12 @@ private fun EditLocationDialog(
     var name by remember { mutableStateOf(oldName) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename location") },
+        title = { Text(t("Rename location")) },
         text = {
-            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Location name") }, singleLine = true)
+            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(t("Location name")) }, singleLine = true)
         },
-        confirmButton = { TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text(t("Save")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }
 
@@ -289,7 +310,7 @@ private fun ExportSelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Export backup") },
+        title = { Text(t("Export backup")) },
         text = {
             Column {
                 BackupSection.entries.forEach { section ->
@@ -300,16 +321,16 @@ private fun ExportSelectionDialog(
                                 onSelectionChanged(selection.toggled(section, checked))
                             },
                         )
-                        Text(section.label)
+                        Text(t(section.label))
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm, enabled = selection.hasAnySelection()) { Text("Choose file") }
+            TextButton(onClick = onConfirm, enabled = selection.hasAnySelection()) { Text(t("Choose file", "Wybierz plik")) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(t("Cancel")) }
         },
     )
 }

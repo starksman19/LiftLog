@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liftlog.app.core.ui.localization.t
 
 @Composable
 fun GymLocationsRoute(viewModel: GymLocationsViewModel = hiltViewModel()) {
@@ -62,7 +63,7 @@ private fun GymLocationsScreen(
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { adding = true }) {
-                Icon(Icons.Outlined.Add, contentDescription = "Add location")
+                Icon(Icons.Outlined.Add, contentDescription = t("Add location"))
             }
         },
     ) { padding ->
@@ -77,18 +78,18 @@ private fun GymLocationsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text("Locations", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                Text(t("Locations"), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             }
             item {
                 Text(
-                    "Choose these locations when creating machine exercises and starting workouts.",
+                    t("Choose these locations when creating machine exercises and starting workouts.", "Wybieraj te lokalizacje podczas tworzenia ćwiczeń na maszynach i rozpoczynania treningów."),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             if (locations.isEmpty()) {
                 item {
                     Text(
-                        "No locations yet.",
+                        t("No locations yet.", "Nie ma jeszcze żadnych lokalizacji."),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 20.dp),
                     )
@@ -110,10 +111,10 @@ private fun GymLocationsScreen(
                         }
                         Row {
                             IconButton(onClick = { editing = location }) {
-                                Icon(Icons.Outlined.Edit, contentDescription = "Rename location")
+                                Icon(Icons.Outlined.Edit, contentDescription = t("Rename location"))
                             }
                             IconButton(onClick = { deleting = location }) {
-                                Icon(Icons.Outlined.Delete, contentDescription = "Delete location")
+                                Icon(Icons.Outlined.Delete, contentDescription = t("Delete location", "Usuń lokalizację"))
                             }
                         }
                     }
@@ -124,14 +125,14 @@ private fun GymLocationsScreen(
 
     if (adding) {
         LocationNameDialog(
-            title = "New location",
+            title = t("New location"),
             onDismiss = { adding = false },
             onSave = { onAdd(it); adding = false },
         )
     }
     editing?.let { location ->
         LocationNameDialog(
-            title = "Rename location",
+            title = t("Rename location"),
             initialName = location,
             onDismiss = { editing = null },
             onSave = { onRename(location, it); editing = null },
@@ -140,10 +141,10 @@ private fun GymLocationsScreen(
     deleting?.let { location ->
         AlertDialog(
             onDismissRequest = { deleting = null },
-            title = { Text("Delete $location?") },
-            text = { Text("This clears the location from related machines and workouts, but does not delete the workouts.") },
-            confirmButton = { TextButton(onClick = { onDelete(location); deleting = null }) { Text("Delete") } },
-            dismissButton = { TextButton(onClick = { deleting = null }) { Text("Cancel") } },
+            title = { Text(t("Delete $location?", "Usunąć $location?")) },
+            text = { Text(t("This clears the location from related machines and workouts, but does not delete the workouts.", "Spowoduje to usunięcie lokalizacji z maszyn i treningów, ale nie usunie treningów.")) },
+            confirmButton = { TextButton(onClick = { onDelete(location); deleting = null }) { Text(t("Delete")) } },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text(t("Cancel")) } },
         )
     }
 }
@@ -164,11 +165,11 @@ internal fun LocationNameDialog(
                 value = name,
                 onValueChange = { name = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Location name") },
+                label = { Text(t("Location name")) },
                 singleLine = true,
             )
         },
-        confirmButton = { TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text(t("Save")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }

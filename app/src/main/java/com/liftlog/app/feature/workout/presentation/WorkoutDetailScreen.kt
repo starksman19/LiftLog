@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.WorkoutDetail
+import com.liftlog.app.core.ui.localization.t
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -78,8 +79,8 @@ fun WorkoutDetailScreen(
     val workout = state.workout
     if (workout == null) {
         Column(modifier = modifier.fillMaxSize().padding(20.dp)) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
-            Text("Workout not found")
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, t("Back")) }
+            Text(t("Workout not found", "Nie znaleziono treningu"))
         }
         return
     }
@@ -93,18 +94,18 @@ fun WorkoutDetailScreen(
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
-                    Text("Workout details", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, t("Back")) }
+                    Text(t("Workout details"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 }
                 Row {
-                    IconButton(onClick = { editDetails = true }) { Icon(Icons.Outlined.Edit, "Edit workout") }
-                    IconButton(onClick = { deleteConfirmation = true }) { Icon(Icons.Outlined.Delete, "Delete workout") }
+                    IconButton(onClick = { editDetails = true }) { Icon(Icons.Outlined.Edit, t("Edit workout", "Edytuj trening")) }
+                    IconButton(onClick = { deleteConfirmation = true }) { Icon(Icons.Outlined.Delete, t("Delete workout", "Usuń trening")) }
                 }
             }
         }
         item {
             Text(
-                text = "${workout.gymLocation ?: "No location"} - ${workout.exercises.size} exercises - ${workout.exercises.sumOf { it.sets.size }} sets",
+                text = t("${workout.gymLocation ?: "No location"} - ${workout.exercises.size} exercises - ${workout.exercises.sumOf { it.sets.size }} sets", "${workout.gymLocation ?: "Bez lokalizacji"} - ${workout.exercises.size} ćwiczeń - ${workout.exercises.sumOf { it.sets.size }} serii"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             workout.notes?.let { Text(it, modifier = Modifier.padding(top = 4.dp)) }
@@ -144,10 +145,10 @@ fun WorkoutDetailScreen(
     if (deleteConfirmation) {
         AlertDialog(
             onDismissRequest = { deleteConfirmation = false },
-            title = { Text("Delete this workout?") },
-            text = { Text("All exercises and sets in this session will be removed.") },
-            confirmButton = { TextButton(onClick = onDeleteWorkout) { Text("Delete") } },
-            dismissButton = { TextButton(onClick = { deleteConfirmation = false }) { Text("Cancel") } },
+            title = { Text(t("Delete this workout?", "Usunąć ten trening?")) },
+            text = { Text(t("All exercises and sets in this session will be removed.", "Wszystkie ćwiczenia i serie z tego treningu zostaną usunięte.")) },
+            confirmButton = { TextButton(onClick = onDeleteWorkout) { Text(t("Delete")) } },
+            dismissButton = { TextButton(onClick = { deleteConfirmation = false }) { Text(t("Cancel")) } },
         )
     }
 }
@@ -165,18 +166,18 @@ private fun CompletedWorkoutDetailsDialog(
     val updatedTimestamp = date.toEpochAtSameTime(workout.finishedAtEpochMillis, formatter)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit workout") },
+        title = { Text(t("Edit workout", "Edytuj trening")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(value = date, onValueChange = { date = it }, label = { Text("Date (YYYY-MM-DD)") }, singleLine = true)
-                OutlinedTextField(value = gym, onValueChange = { gym = it }, label = { Text("Gym / location") }, singleLine = true)
-                OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text("Workout notes") }, minLines = 3)
+                OutlinedTextField(value = date, onValueChange = { date = it }, label = { Text(t("Date (YYYY-MM-DD)", "Data (YYYY-MM-DD)")) }, singleLine = true)
+                OutlinedTextField(value = gym, onValueChange = { gym = it }, label = { Text(t("Gym / location", "Siłownia / lokalizacja")) }, singleLine = true)
+                OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text(t("Workout notes")) }, minLines = 3)
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(updatedTimestamp, updatedTimestamp, gym, notes) }, enabled = updatedTimestamp > 0) { Text("Save") }
+            TextButton(onClick = { onSave(updatedTimestamp, updatedTimestamp, gym, notes) }, enabled = updatedTimestamp > 0) { Text(t("Save")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }
 

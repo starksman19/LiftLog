@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.WorkoutSummary
+import com.liftlog.app.core.ui.localization.t
 import java.text.DateFormat
 import java.util.Date
 
@@ -69,9 +70,9 @@ fun WorkoutHistoryScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = t("Back"))
                 }
-                Text("Workout history", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(t("Workout history"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             }
         }
         item {
@@ -79,7 +80,7 @@ fun WorkoutHistoryScreen(
                 value = state.dateFilter,
                 onValueChange = onDateFilterChanged,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Date filter (YYYY-MM or YYYY-MM-DD)") },
+                label = { Text(t("Date filter (YYYY-MM or YYYY-MM-DD)", "Filtr daty (YYYY-MM lub YYYY-MM-DD)")) },
                 singleLine = true,
             )
         }
@@ -88,7 +89,7 @@ fun WorkoutHistoryScreen(
                 value = state.searchQuery,
                 onValueChange = onSearchChanged,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Search location or notes") },
+                label = { Text(t("Search location or notes", "Szukaj lokalizacji lub notatek")) },
                 leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                 singleLine = true,
             )
@@ -96,7 +97,7 @@ fun WorkoutHistoryScreen(
         if (state.gyms.isNotEmpty()) {
             item {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    item { AssistChip(onClick = { onGymSelected(null) }, label = { Text("All gyms") }) }
+                    item { AssistChip(onClick = { onGymSelected(null) }, label = { Text(t("All gyms", "Wszystkie siłownie")) }) }
                     items(state.gyms) { gym ->
                         AssistChip(onClick = { onGymSelected(gym) }, label = { Text(gym) })
                     }
@@ -104,7 +105,7 @@ fun WorkoutHistoryScreen(
             }
         }
         if (state.workouts.isEmpty()) {
-            item { Text("No completed workouts match these filters.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { Text(t("No completed workouts match these filters."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
             items(state.workouts, key = { it.id }) { workout ->
                 WorkoutSummaryCard(workout, onClick = { onWorkoutSelected(workout.id) })
@@ -122,7 +123,7 @@ private fun WorkoutSummaryCard(workout: WorkoutSummary, onClick: () -> Unit) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(workout.finishedAtEpochMillis)), fontWeight = FontWeight.SemiBold)
             Text(
-                text = listOfNotNull(workout.gymLocation, "${workout.exerciseCount} exercises", "${workout.volume.toInt()} kg volume").joinToString(" - "),
+                text = listOfNotNull(workout.gymLocation, t("${workout.exerciseCount} exercises", "${workout.exerciseCount} ćwiczeń"), t("${workout.volume.toInt()} kg volume", "Objętość: ${workout.volume.toInt()} kg")).joinToString(" - "),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             workout.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall) }

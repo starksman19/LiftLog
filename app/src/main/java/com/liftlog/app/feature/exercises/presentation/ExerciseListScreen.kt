@@ -58,6 +58,7 @@ import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.core.ui.theme.LiftLogTheme
+import com.liftlog.app.core.ui.localization.t
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -99,7 +100,7 @@ fun ExerciseListScreen(
             FloatingActionButton(onClick = { addDialogVisible = true }) {
                 Icon(
                     imageVector = Icons.Outlined.Add,
-                    contentDescription = "Add exercise",
+                    contentDescription = t("Add exercise", "Dodaj ćwiczenie"),
                 )
             }
         },
@@ -116,7 +117,7 @@ fun ExerciseListScreen(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    text = "Exercises",
+                    text = t("Exercises"),
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -133,7 +134,7 @@ fun ExerciseListScreen(
                     )
                 },
                 singleLine = true,
-                label = { Text("Search exercises") },
+                label = { Text(t("Search exercises")) },
             )
 
             LazyColumn(
@@ -182,15 +183,15 @@ fun ExerciseListScreen(
     exercisePendingDelete?.let { exercise ->
         AlertDialog(
             onDismissRequest = { exercisePendingDelete = null },
-            title = { Text("Delete ${exercise.name}?") },
-            text = { Text("This also removes its workout entries and template references.") },
+            title = { Text(t("Delete ${exercise.name}?", "Usunąć ${exercise.name}?")) },
+            text = { Text(t("This also removes its workout entries and template references.", "Usunie to także wpisy tego ćwiczenia z treningów i szablonów.")) },
             confirmButton = {
                 TextButton(onClick = {
                     onDeleteExercise(exercise.id)
                     exercisePendingDelete = null
-                }) { Text("Delete") }
+                }) { Text(t("Delete")) }
             },
-            dismissButton = { TextButton(onClick = { exercisePendingDelete = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { exercisePendingDelete = null }) { Text(t("Cancel")) } },
         )
     }
 }
@@ -237,7 +238,7 @@ internal fun CustomExerciseDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (exercise == null) "New exercise" else "Edit exercise") },
+        title = { Text(t(if (exercise == null) "New exercise" else "Edit exercise")) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -247,25 +248,25 @@ internal fun CustomExerciseDialog(
                     value = name,
                     onValueChange = { name = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Exercise name") },
+                    label = { Text(t("Exercise name")) },
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = muscle,
                     onValueChange = { muscle = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Primary muscle") },
+                    label = { Text(t("Primary muscle")) },
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = equipment,
                     onValueChange = { equipment = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Equipment") },
+                    label = { Text(t("Equipment")) },
                     singleLine = true,
                 )
                 Text(
-                    text = "Exercise type",
+                    text = t("Exercise type"),
                     style = MaterialTheme.typography.labelLarge,
                 )
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -275,16 +276,16 @@ internal fun CustomExerciseDialog(
                             onClick = { category = option },
                             shape = SegmentedButtonDefaults.itemShape(index, ExerciseCategory.entries.size),
                             label = {
-                                Text(if (option == ExerciseCategory.FreeWeights) "Free weights" else "Machine")
+                                Text(t(if (option == ExerciseCategory.FreeWeights) "Free weights" else "Machine"))
                             },
                         )
                     }
                 }
                 if (category == ExerciseCategory.Machine) {
-                    Text("Location", style = MaterialTheme.typography.labelLarge)
+                    Text(t("Location"), style = MaterialTheme.typography.labelLarge)
                     if (locations.isEmpty()) {
                         Text(
-                            "Add a location first in the Locations tab.",
+                            t("Add a location first in the Locations tab.", "Najpierw dodaj lokalizację w zakładce Lokalizacje."),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     } else {
@@ -304,7 +305,7 @@ internal fun CustomExerciseDialog(
                     value = youTubeUrl,
                     onValueChange = { youTubeUrl = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("YouTube link (optional)") },
+                    label = { Text(t("YouTube link (optional)")) },
                     singleLine = true,
                 )
                 OutlinedButton(
@@ -313,12 +314,12 @@ internal fun CustomExerciseDialog(
                 ) {
                     Icon(Icons.Outlined.Image, contentDescription = null)
                     Text(
-                        text = if (imageUri == null) "Add photo" else "Photo selected",
+                        text = t(if (imageUri == null) "Add photo" else "Photo selected"),
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
                 if (imageUri != null) {
-                    TextButton(onClick = { imageUri = null }) { Text("Remove photo") }
+                    TextButton(onClick = { imageUri = null }) { Text(t("Remove photo")) }
                 }
                 imageError?.let { error ->
                     Text(
@@ -345,10 +346,10 @@ internal fun CustomExerciseDialog(
                     )
                 },
                 enabled = isValid,
-            ) { Text(if (exercise == null) "Add" else "Save") }
+            ) { Text(t(if (exercise == null) "Add" else "Save")) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(t("Cancel")) }
         },
     )
 }
@@ -396,10 +397,10 @@ private fun ExerciseCard(
 
             Row {
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Outlined.Edit, contentDescription = "Edit exercise")
+                    Icon(Icons.Outlined.Edit, contentDescription = t("Edit exercise"))
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Outlined.Delete, contentDescription = "Delete exercise")
+                    Icon(Icons.Outlined.Delete, contentDescription = t("Delete exercise", "Usuń ćwiczenie"))
                 }
             }
         }

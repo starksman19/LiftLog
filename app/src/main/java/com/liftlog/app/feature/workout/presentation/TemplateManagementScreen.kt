@@ -37,6 +37,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.WorkoutTemplate
+import com.liftlog.app.core.ui.localization.t
 
 @Composable
 fun TemplateManagementRoute(
@@ -69,7 +70,7 @@ fun TemplateManagementScreen(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
             FloatingActionButton(onClick = { createDialogVisible = true }) {
-                Icon(Icons.Outlined.Add, "Create template")
+                Icon(Icons.Outlined.Add, t("Create template", "Utwórz szablon"))
             }
         },
     ) { innerPadding ->
@@ -79,12 +80,12 @@ fun TemplateManagementScreen(
         ) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
-                    Text("Workout templates", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, t("Back")) }
+                    Text(t("Workout templates", "Szablony treningów"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 }
             }
             if (state.templates.isEmpty()) {
-                item { Text("Create a template to start a saved exercise plan in one step.") }
+                item { Text(t("Create a template to start a saved exercise plan in one step.", "Utwórz szablon, aby rozpocząć zapisany plan ćwiczeń jednym krokiem.")) }
             } else {
                 items(state.templates, key = { it.id }) { template ->
                     Row(
@@ -94,11 +95,11 @@ fun TemplateManagementScreen(
                     ) {
                         Column {
                             Text(template.name, fontWeight = FontWeight.SemiBold)
-                            Text("${template.exerciseCount} exercises", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(t("${template.exerciseCount} exercises", "${template.exerciseCount} ćwiczeń"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Row {
-                            IconButton(onClick = { editedTemplate = template }) { Icon(Icons.Outlined.Edit, "Edit template") }
-                            IconButton(onClick = { templatePendingDeletion = template }) { Icon(Icons.Outlined.Delete, "Delete template") }
+                            IconButton(onClick = { editedTemplate = template }) { Icon(Icons.Outlined.Edit, t("Edit template", "Edytuj szablon")) }
+                            IconButton(onClick = { templatePendingDeletion = template }) { Icon(Icons.Outlined.Delete, t("Delete template", "Usuń szablon")) }
                         }
                     }
                 }
@@ -107,7 +108,7 @@ fun TemplateManagementScreen(
     }
     if (createDialogVisible) {
         TemplateEditorDialog(
-            title = "New template",
+            title = t("New template", "Nowy szablon"),
             initialName = "",
             initialExerciseIds = emptySet(),
             exercises = state.exercises,
@@ -127,9 +128,9 @@ fun TemplateManagementScreen(
     templatePendingDeletion?.let { template ->
         AlertDialog(
             onDismissRequest = { templatePendingDeletion = null },
-            title = { Text("Delete ${template.name}?") },
-            confirmButton = { TextButton(onClick = { onDelete(template.id); templatePendingDeletion = null }) { Text("Delete") } },
-            dismissButton = { TextButton(onClick = { templatePendingDeletion = null }) { Text("Cancel") } },
+            title = { Text(t("Delete ${template.name}?", "Usunąć ${template.name}?")) },
+            confirmButton = { TextButton(onClick = { onDelete(template.id); templatePendingDeletion = null }) { Text(t("Delete")) } },
+            dismissButton = { TextButton(onClick = { templatePendingDeletion = null }) { Text(t("Cancel")) } },
         )
     }
 }
@@ -146,7 +147,7 @@ private fun TemplateEditorLoader(
     androidx.compose.runtime.LaunchedEffect(template.id) { onLoadExerciseIds(template.id) { ids = it } }
     ids?.let { selectedIds ->
         TemplateEditorDialog(
-            title = "Edit template",
+            title = t("Edit template", "Edytuj szablon"),
             initialName = template.name,
             initialExerciseIds = selectedIds,
             exercises = exercises,
@@ -172,8 +173,8 @@ private fun TemplateEditorDialog(
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Template name") }, singleLine = true)
-                Text("Exercises", style = MaterialTheme.typography.labelLarge)
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(t("Template name", "Nazwa szablonu")) }, singleLine = true)
+                Text(t("Exercises"), style = MaterialTheme.typography.labelLarge)
                 exercises.forEach { exercise ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
@@ -188,8 +189,8 @@ private fun TemplateEditorDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(name, selectedIds) }, enabled = name.isNotBlank() && selectedIds.isNotEmpty()) { Text("Save") }
+            TextButton(onClick = { onSave(name, selectedIds) }, enabled = name.isNotBlank() && selectedIds.isNotEmpty()) { Text(t("Save")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }

@@ -33,6 +33,7 @@ import com.liftlog.app.feature.workout.presentation.WorkoutRoute
 import com.liftlog.app.feature.workout.presentation.WorkoutHistoryRoute
 import com.liftlog.app.feature.workout.presentation.WorkoutDetailRoute
 import com.liftlog.app.feature.workout.presentation.TemplateManagementRoute
+import com.liftlog.app.core.ui.localization.t
 
 @Composable
 fun LiftLogApp() {
@@ -70,10 +71,10 @@ fun LiftLogApp() {
                         icon = {
                             Icon(
                                 imageVector = destination.icon,
-                                contentDescription = destination.label,
+                                contentDescription = t(destination.label),
                             )
                         },
-                        label = { Text(destination.label) },
+                        label = { Text(t(destination.label)) },
                     )
                 }
             }

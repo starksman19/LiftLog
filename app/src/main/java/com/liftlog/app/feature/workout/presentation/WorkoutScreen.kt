@@ -59,6 +59,7 @@ import com.liftlog.app.core.model.RecentExercisePerformance
 import com.liftlog.app.core.model.WorkoutTemplate
 import com.liftlog.app.core.ui.theme.LiftLogTheme
 import com.liftlog.app.feature.exercises.presentation.CustomExerciseDialog
+import com.liftlog.app.core.ui.localization.t
 import java.text.DateFormat
 import java.util.Date
 
@@ -176,12 +177,12 @@ private fun EmptyWorkoutScreen(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Workout",
+                text = t("Workout"),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
             )
             IconButton(onClick = onHistory) {
-                Icon(Icons.Outlined.History, contentDescription = "Workout history")
+                Icon(Icons.Outlined.History, contentDescription = t("Workout history"))
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -191,14 +192,14 @@ private fun EmptyWorkoutScreen(
                 contentDescription = null,
             )
             Text(
-                text = "Start workout",
+                text = t("Start workout"),
                 modifier = Modifier.padding(start = 8.dp),
             )
         }
         if (templates.isNotEmpty()) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "Templates",
+                text = t("Templates"),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -214,7 +215,7 @@ private fun EmptyWorkoutScreen(
         }
         OutlinedButton(onClick = onManageTemplates) {
             Icon(Icons.Outlined.BookmarkAdd, contentDescription = null)
-            Text("Manage templates", modifier = Modifier.padding(start = 8.dp))
+            Text(t("Manage templates"), modifier = Modifier.padding(start = 8.dp))
         }
     }
 
@@ -231,7 +232,7 @@ private fun EmptyWorkoutScreen(
 
     templatePendingStart?.let { template ->
         StartWorkoutDialog(
-            title = "Start ${template.name}",
+            title = t("Start ${template.name}", "Rozpocznij ${template.name}"),
             locations = locations,
             onDismiss = { templatePendingStart = null },
             onStart = { location ->
@@ -244,7 +245,7 @@ private fun EmptyWorkoutScreen(
 
 @Composable
 private fun StartWorkoutDialog(
-    title: String = "Start workout",
+    title: String? = null,
     locations: List<String>,
     onDismiss: () -> Unit,
     onStart: (String?) -> Unit,
@@ -252,16 +253,16 @@ private fun StartWorkoutDialog(
     var gymLocation by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        title = { Text(title ?: t("Start workout")) },
         text = {
             LocationPicker(selectedLocation = gymLocation, locations = locations, onLocationSelected = { gymLocation = it })
         },
         confirmButton = {
             TextButton(onClick = { onStart(gymLocation) }) {
-                Text("Start")
+                Text(t("Start", "Rozpocznij"))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }
 
@@ -319,12 +320,15 @@ private fun ActiveWorkoutScreen(
         ) {
             Column {
                 Text(
-                    text = "Active Workout",
+                    text = t("Active Workout"),
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "${activeWorkout.exercises.size} exercises • ${activeWorkout.exercises.sumOf { it.sets.size }} sets",
+                    text = t(
+                        "${activeWorkout.exercises.size} exercises • ${activeWorkout.exercises.sumOf { it.sets.size }} sets",
+                        "${activeWorkout.exercises.size} ćwiczeń • ${activeWorkout.exercises.sumOf { it.sets.size }} serii",
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -348,7 +352,7 @@ private fun ActiveWorkoutScreen(
                 IconButton(onClick = { workoutDetailsDialogVisible = true }) {
                     Icon(
                         imageVector = Icons.Outlined.Edit,
-                        contentDescription = "Edit workout details",
+                        contentDescription = t("Edit workout details", "Edytuj szczegóły treningu"),
                     )
                 }
                 IconButton(
@@ -357,19 +361,19 @@ private fun ActiveWorkoutScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.BookmarkAdd,
-                        contentDescription = "Save as template",
+                        contentDescription = t("Save as template", "Zapisz jako szablon"),
                     )
                 }
                 IconButton(onClick = onDiscardWorkout) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
-                        contentDescription = "Discard workout",
+                        contentDescription = t("Discard workout", "Odrzuć trening"),
                     )
                 }
                 IconButton(onClick = onFinishWorkout) {
                     Icon(
                         imageVector = Icons.Outlined.Check,
-                        contentDescription = "Finish workout",
+                        contentDescription = t("Finish workout", "Zakończ trening"),
                     )
                 }
             }
@@ -377,7 +381,7 @@ private fun ActiveWorkoutScreen(
 
         OutlinedButton(onClick = { exercisePickerVisible = true }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Outlined.Add, contentDescription = null)
-            Text("Add exercises", modifier = Modifier.padding(start = 8.dp))
+            Text(t("Add exercises"), modifier = Modifier.padding(start = 8.dp))
         }
 
         LazyColumn(
@@ -388,7 +392,7 @@ private fun ActiveWorkoutScreen(
             if (activeWorkout.exercises.isEmpty()) {
                 item {
                     Text(
-                        "This workout is empty. Add exercises when you are ready.",
+                        t("This workout is empty. Add exercises when you are ready.", "Ten trening jest pusty. Dodaj ćwiczenia, gdy będziesz gotowy."),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 24.dp),
                     )
@@ -447,7 +451,7 @@ private fun WorkoutDetailsDialog(
     var notes by remember { mutableStateOf(initialNotes.orEmpty()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Workout details") },
+        title = { Text(t("Workout details")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 LocationPicker(selectedLocation = gymLocation, locations = locations, onLocationSelected = { gymLocation = it })
@@ -455,15 +459,15 @@ private fun WorkoutDetailsDialog(
                     value = notes,
                     onValueChange = { notes = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Workout notes") },
+                    label = { Text(t("Workout notes")) },
                     minLines = 3,
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(gymLocation, notes) }) { Text("Save") }
+            TextButton(onClick = { onSave(gymLocation, notes) }) { Text(t("Save")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }
 
@@ -475,20 +479,20 @@ private fun SaveWorkoutTemplateDialog(
     var name by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Save workout template") },
+        title = { Text(t("Save workout template", "Zapisz szablon treningu")) },
         text = {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Template name") },
+                label = { Text(t("Template name", "Nazwa szablonu")) },
                 singleLine = true,
             )
         },
         confirmButton = {
-            TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text("Save") }
+            TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text(t("Save")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }
 
@@ -499,14 +503,14 @@ private fun LocationPicker(
     onLocationSelected: (String?) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Location", style = MaterialTheme.typography.labelLarge)
+        Text(t("Location"), style = MaterialTheme.typography.labelLarge)
         FilterChip(
             selected = selectedLocation == null,
             onClick = { onLocationSelected(null) },
-            label = { Text("No location") },
+            label = { Text(t("No location")) },
         )
         if (locations.isEmpty()) {
-            Text("Add locations in the Locations tab.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(t("Add locations in the Locations tab.", "Dodaj lokalizacje w zakładce Lokalizacje."), color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             locations.forEach { location ->
                 FilterChip(
@@ -547,20 +551,20 @@ private fun ExercisePickerScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Add exercises", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-            IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = "Close") }
+            Text(t("Add exercises"), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, contentDescription = t("Close")) }
         }
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-            label = { Text("Search available exercises") },
+            label = { Text(t("Search available exercises")) },
             singleLine = true,
         )
         OutlinedButton(onClick = { createExerciseVisible = true }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Outlined.Add, contentDescription = null)
-            Text("Create new exercise", modifier = Modifier.padding(start = 8.dp))
+            Text(t("Create new exercise"), modifier = Modifier.padding(start = 8.dp))
         }
         LazyColumn(
             modifier = Modifier.weight(1f),
@@ -597,7 +601,7 @@ private fun ExercisePickerScreen(
             enabled = newSelection.isNotEmpty(),
             modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
         ) {
-            Text("Add ${newSelection.size} selected")
+            Text(t("Add ${newSelection.size} selected", "Dodaj wybrane: ${newSelection.size}"))
         }
     }
 
@@ -657,7 +661,7 @@ internal fun LoggedExerciseCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        text = "${exercise.sets.size} sets",
+                        text = t("${exercise.sets.size} sets", "${exercise.sets.size} serii"),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -665,15 +669,15 @@ internal fun LoggedExerciseCard(
 
                 Row {
                     IconButton(onClick = { editNotesVisible = true }) {
-                        Icon(Icons.Outlined.Edit, contentDescription = "Edit exercise notes")
+                        Icon(Icons.Outlined.Edit, contentDescription = t("Edit exercise notes", "Edytuj notatki ćwiczenia"))
                     }
                     if (onShowHistory != null) {
                         IconButton(onClick = { onShowHistory(exercise.exerciseId, exercise.name) }) {
-                            Icon(Icons.Outlined.Info, contentDescription = "View recent exercise results")
+                            Icon(Icons.Outlined.Info, contentDescription = t("View recent exercise results", "Pokaż ostatnie wyniki ćwiczenia"))
                         }
                     }
                     IconButton(onClick = { exercisePendingDeletion = true }) {
-                        Icon(Icons.Outlined.Delete, contentDescription = "Remove exercise from workout")
+                        Icon(Icons.Outlined.Delete, contentDescription = t("Remove exercise from workout", "Usuń ćwiczenie z treningu"))
                     }
                     OutlinedButton(
                         onClick = {
@@ -690,7 +694,7 @@ internal fun LoggedExerciseCard(
                             contentDescription = null,
                         )
                         Text(
-                            text = "Set",
+                            text = t("Set"),
                             modifier = Modifier.padding(start = 6.dp),
                         )
                     }
@@ -707,7 +711,7 @@ internal fun LoggedExerciseCard(
 
             if (exercise.sets.isEmpty()) {
                 Text(
-                    text = "No sets yet",
+                    text = t("No sets yet"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -747,18 +751,18 @@ internal fun LoggedExerciseCard(
     setPendingDeletion?.let { set ->
         AlertDialog(
             onDismissRequest = { setPendingDeletion = null },
-            title = { Text("Delete set?") },
-            text = { Text("Set ${set.setNumber} will be removed from this workout.") },
+            title = { Text(t("Delete set?", "Usunąć serię?")) },
+            text = { Text(t("Set ${set.setNumber} will be removed from this workout.", "Seria ${set.setNumber} zostanie usunięta z tego treningu.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         onDeleteSet(set.id)
                         setPendingDeletion = null
                     },
-                ) { Text("Delete") }
+                ) { Text(t("Delete")) }
             },
             dismissButton = {
-                TextButton(onClick = { setPendingDeletion = null }) { Text("Cancel") }
+                TextButton(onClick = { setPendingDeletion = null }) { Text(t("Cancel")) }
             },
         )
     }
@@ -777,15 +781,15 @@ internal fun LoggedExerciseCard(
     if (exercisePendingDeletion) {
         AlertDialog(
             onDismissRequest = { exercisePendingDeletion = false },
-            title = { Text("Remove ${exercise.name}?") },
-            text = { Text("Its sets will also be removed from this workout.") },
+            title = { Text(t("Remove ${exercise.name}?", "Usunąć ${exercise.name}?")) },
+            text = { Text(t("Its sets will also be removed from this workout.", "Jego serie również zostaną usunięte z tego treningu.")) },
             confirmButton = {
                 TextButton(onClick = {
                     onDeleteExercise(exercise.id)
                     exercisePendingDeletion = false
-                }) { Text("Remove") }
+                }) { Text(t("Remove")) }
             },
-            dismissButton = { TextButton(onClick = { exercisePendingDeletion = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { exercisePendingDeletion = false }) { Text(t("Cancel")) } },
         )
     }
 }
@@ -797,12 +801,12 @@ private fun ExerciseHistoryDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Recent results: ${history.exerciseName}") },
+        title = { Text(t("Recent results: ${history.exerciseName}", "Ostatnie wyniki: ${history.exerciseName}")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (history.performances.isEmpty()) {
                     Text(
-                        "No completed workouts have been recorded for this exercise yet.",
+                        t("No completed workouts have been recorded for this exercise yet.", "Nie ma jeszcze ukończonych treningów z tym ćwiczeniem."),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
@@ -815,7 +819,7 @@ private fun ExerciseHistoryDialog(
                             )
                             performance.sets.forEach { set ->
                                 Text(
-                                    "Set ${set.setNumber}: ${set.weight.clean()} kg x ${set.reps}",
+                                    t("Set ${set.setNumber}: ${set.weight.clean()} kg x ${set.reps}", "Seria ${set.setNumber}: ${set.weight.clean()} kg x ${set.reps}"),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
@@ -824,7 +828,7 @@ private fun ExerciseHistoryDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(t("Close")) } },
     )
 }
 
@@ -837,18 +841,18 @@ private fun ExerciseNotesDialog(
     var notes by remember { mutableStateOf(initialNotes.orEmpty()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Exercise notes") },
+        title = { Text(t("Exercise notes")) },
         text = {
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Notes") },
+                label = { Text(t("Notes")) },
                 minLines = 3,
             )
         },
-        confirmButton = { TextButton(onClick = { onSave(notes) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { onSave(notes) }) { Text(t("Save")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }
 
@@ -864,7 +868,7 @@ private fun SetRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "Set ${set.setNumber}",
+            text = t("Set ${set.setNumber}", "Seria ${set.setNumber}"),
             style = MaterialTheme.typography.bodyMedium,
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -874,10 +878,10 @@ private fun SetRow(
                 fontWeight = FontWeight.Medium,
             )
             IconButton(onClick = onEdit) {
-                Icon(Icons.Outlined.Edit, contentDescription = "Edit set")
+                Icon(Icons.Outlined.Edit, contentDescription = t("Edit set"))
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.Delete, contentDescription = "Delete set")
+                Icon(Icons.Outlined.Delete, contentDescription = t("Delete set"))
             }
         }
     }
@@ -897,14 +901,14 @@ private fun SetEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (editor.setEntryId == null) "Add set" else "Edit set") },
+        title = { Text(if (editor.setEntryId == null) t("Add set") else t("Edit set")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = weight,
                     onValueChange = { weight = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Weight (kg)") },
+                    label = { Text(t("Weight (kg)")) },
                     singleLine = true,
                     isError = weight.isNotBlank() && (parsedWeight == null || parsedWeight < 0),
                 )
@@ -912,7 +916,7 @@ private fun SetEditorDialog(
                     value = reps,
                     onValueChange = { reps = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Reps") },
+                    label = { Text(t("Reps")) },
                     singleLine = true,
                     isError = reps.isNotBlank() && (parsedReps == null || parsedReps <= 0),
                 )
@@ -922,10 +926,10 @@ private fun SetEditorDialog(
             TextButton(
                 onClick = { onSave(parsedWeight ?: 0.0, parsedReps ?: 1) },
                 enabled = isValid,
-            ) { Text("Save") }
+            ) { Text(t("Save")) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(t("Cancel")) }
         },
     )
 }

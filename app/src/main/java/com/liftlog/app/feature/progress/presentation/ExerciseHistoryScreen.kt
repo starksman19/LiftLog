@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liftlog.app.core.ui.localization.t
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -67,10 +68,10 @@ fun ExerciseHistoryScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = t("Back"))
                 }
                 Text(
-                    text = state.exerciseName.ifBlank { "Exercise history" },
+                    text = state.exerciseName.ifBlank { t("Exercise history", "Historia ćwiczenia") },
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                 )
@@ -93,7 +94,7 @@ fun ExerciseHistoryScreen(
         if (state.history.isEmpty()) {
             item {
                 Text(
-                    text = "No completed sets for this exercise yet.",
+                    text = t("No completed sets for this exercise yet.", "Brak ukończonych serii dla tego ćwiczenia."),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -121,7 +122,7 @@ private fun ExerciseWeightChart(history: List<ExerciseHistorySession>) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Best weight progression", fontWeight = FontWeight.SemiBold)
+            Text(t("Best weight progression", "Postęp najlepszego ciężaru"), fontWeight = FontWeight.SemiBold)
             Canvas(modifier = Modifier.fillMaxWidth().height(132.dp)) {
                 if (points.isEmpty()) return@Canvas
                 val left = 4.dp.toPx()
@@ -140,7 +141,7 @@ private fun ExerciseWeightChart(history: List<ExerciseHistorySession>) {
                 drawPath(path, color = chartColor, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
                 offsets.forEach { drawCircle(chartColor, 4.dp.toPx(), it) }
             }
-            Text("Latest best: ${points.last().second.compact()} kg", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(t("Latest best: ${points.last().second.compact()} kg", "Najnowszy rekord: ${points.last().second.compact()} kg"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -169,19 +170,19 @@ private fun ExerciseInformationCard(
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("${exercise.primaryMuscle} / ${exercise.equipment}", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(if (exercise.category == com.liftlog.app.core.model.ExerciseCategory.Machine) "Machine" else "Free weights")
-            exercise.gymLocation?.let { Text("Location: $it") }
+            Text(t(if (exercise.category == com.liftlog.app.core.model.ExerciseCategory.Machine) "Machine" else "Free weights"))
+            exercise.gymLocation?.let { Text(t("Location: $it", "Lokalizacja: $it")) }
             image?.let {
                 Image(
                     bitmap = it,
-                    contentDescription = "Exercise photo",
+                    contentDescription = t("Exercise photo", "Zdjęcie ćwiczenia"),
                     modifier = Modifier.fillMaxWidth().height(180.dp),
                     contentScale = ContentScale.Crop,
                 )
             }
             exercise.youTubeUrl?.let { link ->
                 IconButton(onClick = { onOpenVideo(link) }) {
-                    Icon(Icons.Outlined.PlayCircle, contentDescription = "Open YouTube instruction")
+                    Icon(Icons.Outlined.PlayCircle, contentDescription = t("Open YouTube instruction", "Otwórz instrukcję YouTube"))
                 }
             }
         }
@@ -212,7 +213,7 @@ private fun HistorySessionCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("Set ${set.setNumber}")
+                    Text(t("Set ${set.setNumber}", "Seria ${set.setNumber}"))
                     Text(
                         text = "${set.weight.compact()} kg x ${set.reps}",
                         fontWeight = FontWeight.Medium,

@@ -32,8 +32,9 @@ class RoomWorkoutRepository @Inject constructor(
                     if (exerciseIds.isEmpty()) {
                         flowOf(
                             ActiveWorkout(
-                                id = session.id,
-                                startedAtEpochMillis = session.startedAtEpochMillis,
+                id = session.id,
+                startedAtEpochMillis = session.startedAtEpochMillis,
+                gymLocation = session.gymLocation,
                                 exercises = emptyList(),
                             ),
                         )
@@ -57,7 +58,7 @@ class RoomWorkoutRepository @Inject constructor(
         )
     }
 
-    override suspend fun addExerciseToActiveWorkout(exerciseId: Long) {
+    override suspend fun addExerciseToActiveWorkout(exerciseId: Long, notes: String?) {
         val workoutSessionId = workoutDao.getActiveSessionId() ?: return
         val orderIndex = workoutDao.getNextExerciseOrder(workoutSessionId)
 
@@ -66,6 +67,7 @@ class RoomWorkoutRepository @Inject constructor(
                 workoutSessionId = workoutSessionId,
                 exerciseId = exerciseId,
                 orderIndex = orderIndex,
+                notes = notes?.takeIf { it.isNotBlank() },
             ),
         )
     }
@@ -124,6 +126,7 @@ class RoomWorkoutRepository @Inject constructor(
         return ActiveWorkout(
             id = id,
             startedAtEpochMillis = startedAtEpochMillis,
+            gymLocation = gymLocation,
             exercises = exerciseRows.map { exerciseRow ->
                 LoggedExercise(
                     id = exerciseRow.workoutExerciseId,

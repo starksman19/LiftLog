@@ -4,6 +4,7 @@ import androidx.room3.Entity
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
 import com.liftlog.app.core.model.Exercise
+import com.liftlog.app.core.model.ExerciseCategory
 
 @Entity(
     tableName = "exercises",
@@ -19,6 +20,10 @@ data class ExerciseEntity(
     val name: String,
     val primaryMuscle: String,
     val equipment: String,
+    val category: String,
+    val gymLocation: String? = null,
+    val youTubeUrl: String? = null,
+    val imageUri: String? = null,
     val isCustom: Boolean = false,
     val createdAtEpochMillis: Long,
 )
@@ -28,6 +33,9 @@ fun ExerciseEntity.toModel(): Exercise = Exercise(
     name = name,
     primaryMuscle = primaryMuscle,
     equipment = equipment,
+    category = ExerciseCategory.valueOf(category),
+    gymLocation = gymLocation,
+    youTubeUrl = youTubeUrl,
+    imageUri = imageUri,
     isCustom = isCustom,
 )
-

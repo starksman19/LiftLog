@@ -4,6 +4,7 @@ import com.liftlog.app.core.database.dao.ExerciseDao
 import com.liftlog.app.core.database.entity.ExerciseEntity
 import com.liftlog.app.core.database.entity.toModel
 import com.liftlog.app.core.model.Exercise
+import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.feature.exercises.domain.ExerciseRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,6 +42,7 @@ class RoomExerciseRepository @Inject constructor(
                 name = name,
                 primaryMuscle = primaryMuscle,
                 equipment = equipment,
+                category = ExerciseCategory.FreeWeights.name,
                 isCustom = true,
                 createdAtEpochMillis = System.currentTimeMillis(),
             ),
@@ -64,48 +66,56 @@ class RoomExerciseRepository @Inject constructor(
                 name = "Bench Press",
                 primaryMuscle = "Chest",
                 equipment = "Barbell",
+                category = ExerciseCategory.FreeWeights.name,
                 createdAtEpochMillis = 0,
             ),
             ExerciseEntity(
                 name = "Squat",
                 primaryMuscle = "Legs",
                 equipment = "Barbell",
+                category = ExerciseCategory.FreeWeights.name,
                 createdAtEpochMillis = 0,
             ),
             ExerciseEntity(
                 name = "Deadlift",
                 primaryMuscle = "Back",
                 equipment = "Barbell",
+                category = ExerciseCategory.FreeWeights.name,
                 createdAtEpochMillis = 0,
             ),
             ExerciseEntity(
                 name = "Overhead Press",
                 primaryMuscle = "Shoulders",
                 equipment = "Barbell",
+                category = ExerciseCategory.FreeWeights.name,
                 createdAtEpochMillis = 0,
             ),
             ExerciseEntity(
                 name = "Lat Pulldown",
                 primaryMuscle = "Back",
                 equipment = "Machine",
+                category = ExerciseCategory.Machine.name,
                 createdAtEpochMillis = 0,
             ),
             ExerciseEntity(
                 name = "Dumbbell Row",
                 primaryMuscle = "Back",
                 equipment = "Dumbbell",
+                category = ExerciseCategory.FreeWeights.name,
                 createdAtEpochMillis = 0,
             ),
             ExerciseEntity(
                 name = "Leg Press",
                 primaryMuscle = "Legs",
                 equipment = "Machine",
+                category = ExerciseCategory.Machine.name,
                 createdAtEpochMillis = 0,
             ),
             ExerciseEntity(
                 name = "Biceps Curl",
                 primaryMuscle = "Arms",
                 equipment = "Dumbbell",
+                category = ExerciseCategory.FreeWeights.name,
                 createdAtEpochMillis = 0,
             ),
         )

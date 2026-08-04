@@ -7,6 +7,7 @@ import com.liftlog.app.core.database.dao.ExerciseDao
 import com.liftlog.app.core.database.dao.BackupDao
 import com.liftlog.app.core.database.dao.ProgressDao
 import com.liftlog.app.core.database.dao.WorkoutDao
+import com.liftlog.app.core.database.dao.WorkoutTemplateDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -41,4 +42,7 @@ object DatabaseModule {
 
     @Provides
     fun provideWorkoutDao(database: LiftLogDatabase): WorkoutDao = database.workoutDao()
+
+    @Provides
+    fun provideWorkoutTemplateDao(database: LiftLogDatabase): WorkoutTemplateDao = database.workoutTemplateDao()
 }

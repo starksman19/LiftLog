@@ -81,6 +81,10 @@ interface BackupDao {
         SET name = :name,
             primaryMuscle = :primaryMuscle,
             equipment = :equipment,
+            category = :category,
+            gymLocation = :gymLocation,
+            youTubeUrl = :youTubeUrl,
+            imageUri = :imageUri,
             isCustom = :isCustom,
             createdAtEpochMillis = :createdAtEpochMillis
         WHERE id = :exerciseId
@@ -91,6 +95,10 @@ interface BackupDao {
         name: String,
         primaryMuscle: String,
         equipment: String,
+        category: String,
+        gymLocation: String?,
+        youTubeUrl: String?,
+        imageUri: String?,
         isCustom: Boolean,
         createdAtEpochMillis: Long,
     )
@@ -135,6 +143,10 @@ interface BackupDao {
                     name = exercise.name,
                     primaryMuscle = exercise.primaryMuscle,
                     equipment = exercise.equipment,
+                    category = exercise.category,
+                    gymLocation = exercise.gymLocation,
+                    youTubeUrl = exercise.youTubeUrl,
+                    imageUri = exercise.imageUri,
                     isCustom = exercise.isCustom,
                     createdAtEpochMillis = exercise.createdAtEpochMillis,
                 )

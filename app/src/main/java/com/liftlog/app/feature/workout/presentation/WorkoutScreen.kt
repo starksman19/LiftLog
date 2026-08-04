@@ -71,7 +71,7 @@ fun WorkoutRoute(
 fun WorkoutScreen(
     state: WorkoutUiState,
     onStartWorkout: () -> Unit,
-    onAddExercise: (Long) -> Unit,
+    onAddExercise: (Long, String?) -> Unit,
     onAddSet: (Long, Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
     onDeleteSet: (Long) -> Unit,
@@ -136,7 +136,7 @@ private fun EmptyWorkoutScreen(
 private fun ActiveWorkoutScreen(
     activeWorkout: ActiveWorkout,
     availableExercises: List<Exercise>,
-    onAddExercise: (Long) -> Unit,
+    onAddExercise: (Long, String?) -> Unit,
     onAddSet: (Long, Double, Int) -> Unit,
     onUpdateSet: (Long, Double, Int) -> Unit,
     onDeleteSet: (Long) -> Unit,
@@ -144,6 +144,7 @@ private fun ActiveWorkoutScreen(
     onDiscardWorkout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var exercisePendingAddition by remember { mutableStateOf<Exercise?>(null) }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -195,7 +196,7 @@ private fun ActiveWorkoutScreen(
                 key = { exercise -> exercise.id },
             ) { exercise ->
                 AssistChip(
-                    onClick = { onAddExercise(exercise.id) },
+                    onClick = { exercisePendingAddition = exercise },
                     label = { Text(exercise.name) },
                     leadingIcon = {
                         Icon(
@@ -225,6 +226,49 @@ private fun ActiveWorkoutScreen(
             }
         }
     }
+
+    exercisePendingAddition?.let { exercise ->
+        AddExerciseToWorkoutDialog(
+            exercise = exercise,
+            onDismiss = { exercisePendingAddition = null },
+            onConfirm = { notes ->
+                onAddExercise(exercise.id, notes)
+                exercisePendingAddition = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun AddExerciseToWorkoutDialog(
+    exercise: Exercise,
+    onDismiss: () -> Unit,
+    onConfirm: (String?) -> Unit,
+) {
+    var notes by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(exercise.name) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "${exercise.primaryMuscle} / ${exercise.equipment}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Notes for this workout") },
+                    minLines = 3,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(notes.takeIf { it.isNotBlank() }) }) { Text("Add") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -448,6 +492,7 @@ private fun WorkoutScreenPreview() {
                 activeWorkout = ActiveWorkout(
                     id = 1,
                     startedAtEpochMillis = 0,
+                    gymLocation = null,
                     exercises = listOf(
                         LoggedExercise(
                             id = 1,
@@ -464,12 +509,12 @@ private fun WorkoutScreenPreview() {
                     ),
                 ),
                 availableExercises = listOf(
-                    Exercise(1, "Bench Press", "Chest", "Barbell", false),
-                    Exercise(2, "Squat", "Legs", "Barbell", false),
+                    Exercise(1, "Bench Press", "Chest", "Barbell", com.liftlog.app.core.model.ExerciseCategory.FreeWeights, null, null, null, false),
+                    Exercise(2, "Squat", "Legs", "Barbell", com.liftlog.app.core.model.ExerciseCategory.FreeWeights, null, null, null, false),
                 ),
             ),
             onStartWorkout = {},
-            onAddExercise = {},
+            onAddExercise = { _, _ -> },
             onAddSet = { _, _, _ -> },
             onUpdateSet = { _, _, _ -> },
             onDeleteSet = {},

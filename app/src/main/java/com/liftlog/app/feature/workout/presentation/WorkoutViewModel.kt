@@ -62,9 +62,9 @@ class WorkoutViewModel @Inject constructor(
         }
     }
 
-    fun addExercise(exerciseId: Long) {
+    fun addExercise(exerciseId: Long, notes: String?) {
         viewModelScope.launch {
-            addExerciseToActiveWorkoutUseCase(exerciseId)
+            addExerciseToActiveWorkoutUseCase(exerciseId, notes)
         }
     }
 

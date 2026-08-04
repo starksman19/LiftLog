@@ -8,6 +8,7 @@ import com.liftlog.app.core.database.entity.SetEntryEntity
 import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
 import com.liftlog.app.core.database.model.WorkoutExerciseRow
+import com.liftlog.app.core.database.model.RecentExercisePerformanceRow
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -59,6 +60,28 @@ interface WorkoutDao {
         """,
     )
     suspend fun getActiveSessionId(): Long?
+
+    @Query(
+        """
+        SELECT ws.finishedAtEpochMillis AS finishedAtEpochMillis,
+               se.setNumber AS setNumber,
+               se.weight AS weight,
+               se.reps AS reps
+        FROM workout_sessions AS ws
+        JOIN workout_exercises AS we ON we.workoutSessionId = ws.id
+        JOIN set_entries AS se ON se.workoutExerciseId = we.id
+        WHERE ws.id IN (
+            SELECT ws2.id
+            FROM workout_sessions AS ws2
+            JOIN workout_exercises AS we2 ON we2.workoutSessionId = ws2.id
+            WHERE ws2.finishedAtEpochMillis IS NOT NULL AND we2.exerciseId = :exerciseId
+            ORDER BY ws2.finishedAtEpochMillis DESC
+            LIMIT 2
+        ) AND we.exerciseId = :exerciseId
+        ORDER BY ws.finishedAtEpochMillis DESC, se.setNumber ASC
+        """,
+    )
+    suspend fun getRecentExercisePerformances(exerciseId: Long): List<RecentExercisePerformanceRow>
 
     @Query("SELECT COALESCE(MAX(orderIndex), -1) + 1 FROM workout_exercises WHERE workoutSessionId = :workoutSessionId")
     suspend fun getNextExerciseOrder(workoutSessionId: Long): Int

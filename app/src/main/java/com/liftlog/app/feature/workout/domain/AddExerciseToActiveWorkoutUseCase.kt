@@ -5,8 +5,7 @@ import javax.inject.Inject
 class AddExerciseToActiveWorkoutUseCase @Inject constructor(
     private val repository: WorkoutRepository,
 ) {
-    suspend operator fun invoke(exerciseId: Long) {
-        repository.addExerciseToActiveWorkout(exerciseId)
+    suspend operator fun invoke(exerciseId: Long, notes: String?) {
+        repository.addExerciseToActiveWorkout(exerciseId, notes)
     }
 }
-

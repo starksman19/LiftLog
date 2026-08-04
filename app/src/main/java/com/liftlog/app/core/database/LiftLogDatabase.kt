@@ -6,11 +6,14 @@ import com.liftlog.app.core.database.dao.ExerciseDao
 import com.liftlog.app.core.database.dao.BackupDao
 import com.liftlog.app.core.database.dao.ProgressDao
 import com.liftlog.app.core.database.dao.WorkoutDao
+import com.liftlog.app.core.database.dao.WorkoutTemplateDao
 import com.liftlog.app.core.database.entity.ExerciseEntity
 import com.liftlog.app.core.database.entity.ExerciseSearchEntity
 import com.liftlog.app.core.database.entity.SetEntryEntity
 import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplateEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
 
 @Database(
     entities = [
@@ -19,8 +22,10 @@ import com.liftlog.app.core.database.entity.WorkoutSessionEntity
         WorkoutSessionEntity::class,
         WorkoutExerciseEntity::class,
         SetEntryEntity::class,
+        WorkoutTemplateEntity::class,
+        WorkoutTemplateExerciseEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class LiftLogDatabase : RoomDatabase() {
@@ -28,4 +33,5 @@ abstract class LiftLogDatabase : RoomDatabase() {
     abstract fun backupDao(): BackupDao
     abstract fun progressDao(): ProgressDao
     abstract fun workoutDao(): WorkoutDao
+    abstract fun workoutTemplateDao(): WorkoutTemplateDao
 }

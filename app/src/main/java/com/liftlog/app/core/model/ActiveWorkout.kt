@@ -3,6 +3,7 @@ package com.liftlog.app.core.model
 data class ActiveWorkout(
     val id: Long,
     val startedAtEpochMillis: Long,
+    val gymLocation: String?,
     val exercises: List<LoggedExercise>,
 )
 
@@ -22,4 +23,3 @@ data class LoggedSet(
     val weight: Double,
     val reps: Int,
 )
-

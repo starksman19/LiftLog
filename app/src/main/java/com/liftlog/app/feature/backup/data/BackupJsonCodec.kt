@@ -32,6 +32,10 @@ internal object BackupJsonCodec {
                     put("name", exercise.name)
                     put("primaryMuscle", exercise.primaryMuscle)
                     put("equipment", exercise.equipment)
+                    put("category", exercise.category)
+                    putNullable("gymLocation", exercise.gymLocation)
+                    putNullable("youTubeUrl", exercise.youTubeUrl)
+                    putNullable("imageUri", exercise.imageUri)
                     put("isCustom", exercise.isCustom)
                     put("createdAtEpochMillis", exercise.createdAtEpochMillis)
                 }
@@ -41,6 +45,7 @@ internal object BackupJsonCodec {
                     put("id", session.id)
                     put("startedAtEpochMillis", session.startedAtEpochMillis)
                     putNullable("finishedAtEpochMillis", session.finishedAtEpochMillis)
+                    putNullable("gymLocation", session.gymLocation)
                     putNullable("notes", session.notes)
                 }
             })
@@ -93,6 +98,10 @@ internal object BackupJsonCodec {
                     name = item.nonBlankString("name"),
                     primaryMuscle = item.nonBlankString("primaryMuscle"),
                     equipment = item.nonBlankString("equipment"),
+                    category = item.nonBlankString("category"),
+                    gymLocation = item.optionalString("gymLocation"),
+                    youTubeUrl = item.optionalString("youTubeUrl"),
+                    imageUri = item.optionalString("imageUri"),
                     isCustom = item.getBoolean("isCustom"),
                     createdAtEpochMillis = item.getLong("createdAtEpochMillis"),
                 )
@@ -102,6 +111,7 @@ internal object BackupJsonCodec {
                     id = item.positiveLong("id"),
                     startedAtEpochMillis = item.getLong("startedAtEpochMillis"),
                     finishedAtEpochMillis = item.optionalLong("finishedAtEpochMillis"),
+                    gymLocation = item.optionalString("gymLocation"),
                     notes = item.optionalString("notes"),
                 )
             },

@@ -2,6 +2,7 @@ package com.liftlog.app.core.datastore
 
 import android.content.Context
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -54,8 +55,18 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun areStarterExercisesSeeded(): Boolean =
+        context.settingsDataStore.data.first()[Keys.StarterExercisesSeeded] ?: false
+
+    suspend fun markStarterExercisesSeeded() {
+        context.settingsDataStore.edit { preferences ->
+            preferences[Keys.StarterExercisesSeeded] = true
+        }
+    }
+
     private object Keys {
         val WeightUnit: Preferences.Key<String> = stringPreferencesKey("weight_unit")
         val DefaultRestSeconds: Preferences.Key<Int> = intPreferencesKey("default_rest_seconds")
+        val StarterExercisesSeeded: Preferences.Key<Boolean> = booleanPreferencesKey("starter_exercises_seeded")
     }
 }

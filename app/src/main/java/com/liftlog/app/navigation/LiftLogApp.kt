@@ -117,7 +117,7 @@ fun LiftLogApp() {
                 )
             }
             composable(TopLevelDestination.Progress.route) {
-                ProgressRoute()
+                ProgressRoute(onWorkoutHistory = { navController.navigate("workout-history") })
             }
             composable(TopLevelDestination.Settings.route) {
                 SettingsRoute()

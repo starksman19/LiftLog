@@ -288,6 +288,8 @@ private fun ActiveWorkoutScreen(
     var saveTemplateDialogVisible by remember { mutableStateOf(false) }
     var workoutDetailsDialogVisible by remember { mutableStateOf(false) }
     var exercisePickerVisible by remember { mutableStateOf(false) }
+    var finishConfirmationVisible by remember { mutableStateOf(false) }
+    var discardConfirmationVisible by remember { mutableStateOf(false) }
     if (exercisePickerVisible) {
         ExercisePickerScreen(
             exercises = availableExercises,
@@ -364,24 +366,32 @@ private fun ActiveWorkoutScreen(
                         contentDescription = t("Save as template", "Zapisz jako szablon"),
                     )
                 }
-                IconButton(onClick = onDiscardWorkout) {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = t("Discard workout", "Odrzuć trening"),
-                    )
-                }
-                IconButton(onClick = onFinishWorkout) {
-                    Icon(
-                        imageVector = Icons.Outlined.Check,
-                        contentDescription = t("Finish workout", "Zakończ trening"),
-                    )
-                }
             }
         }
 
         OutlinedButton(onClick = { exercisePickerVisible = true }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Outlined.Add, contentDescription = null)
             Text(t("Add exercises"), modifier = Modifier.padding(start = 8.dp))
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            OutlinedButton(
+                onClick = { discardConfirmationVisible = true },
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(Icons.Outlined.Delete, contentDescription = null)
+                Text(t("Discard", "Odrzuć"), modifier = Modifier.padding(start = 8.dp))
+            }
+            Button(
+                onClick = { finishConfirmationVisible = true },
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(Icons.Outlined.Check, contentDescription = null)
+                Text(t("Finish workout", "Zakończ trening"), modifier = Modifier.padding(start = 8.dp))
+            }
         }
 
         LazyColumn(
@@ -435,6 +445,36 @@ private fun ActiveWorkoutScreen(
                 onUpdateWorkoutDetails(location, notes)
                 workoutDetailsDialogVisible = false
             },
+        )
+    }
+
+    if (finishConfirmationVisible) {
+        AlertDialog(
+            onDismissRequest = { finishConfirmationVisible = false },
+            title = { Text(t("Finish this workout?", "Zakończyć trening?")) },
+            text = { Text(t("Your exercises and completed sets will be saved in history.", "Ćwiczenia i zapisane serie zostaną dodane do historii.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onFinishWorkout()
+                    finishConfirmationVisible = false
+                }) { Text(t("Finish", "Zakończ")) }
+            },
+            dismissButton = { TextButton(onClick = { finishConfirmationVisible = false }) { Text(t("Cancel")) } },
+        )
+    }
+
+    if (discardConfirmationVisible) {
+        AlertDialog(
+            onDismissRequest = { discardConfirmationVisible = false },
+            title = { Text(t("Discard this workout?", "Odrzucić trening?")) },
+            text = { Text(t("This removes the active workout and all of its sets.", "Aktywny trening i wszystkie jego serie zostaną usunięte.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDiscardWorkout()
+                    discardConfirmationVisible = false
+                }) { Text(t("Discard", "Odrzuć")) }
+            },
+            dismissButton = { TextButton(onClick = { discardConfirmationVisible = false }) { Text(t("Cancel")) } },
         )
     }
 }
@@ -653,7 +693,7 @@ internal fun LoggedExerciseCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = exercise.name,
                         style = MaterialTheme.typography.titleMedium,
@@ -688,26 +728,22 @@ internal fun LoggedExerciseCard(
                     IconButton(onClick = { exercisePendingDeletion = true }) {
                         Icon(Icons.Outlined.Delete, contentDescription = t("Remove exercise from workout", "Usuń ćwiczenie z treningu"))
                     }
-                    OutlinedButton(
-                        onClick = {
-                            val previous = exercise.sets.lastOrNull()
-                            editor = SetEditor(
-                                setEntryId = null,
-                                initialWeight = previous?.weight ?: 0.0,
-                                initialReps = previous?.reps ?: 10,
-                            )
-                        },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Add,
-                            contentDescription = null,
-                        )
-                        Text(
-                            text = t("Set"),
-                            modifier = Modifier.padding(start = 6.dp),
-                        )
-                    }
                 }
+            }
+
+            Button(
+                onClick = {
+                    val previous = exercise.sets.lastOrNull()
+                    editor = SetEditor(
+                        setEntryId = null,
+                        initialWeight = previous?.weight ?: 0.0,
+                        initialReps = previous?.reps ?: 10,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(imageVector = Icons.Outlined.Add, contentDescription = null)
+                Text(text = t("Add set", "Dodaj serię"), modifier = Modifier.padding(start = 8.dp))
             }
 
             exercise.notes?.let { notes ->

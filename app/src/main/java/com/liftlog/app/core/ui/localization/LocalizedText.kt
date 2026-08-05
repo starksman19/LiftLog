@@ -1,15 +1,34 @@
 package com.liftlog.app.core.ui.localization
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.appcompat.app.AppCompatDelegate
+import com.liftlog.app.core.model.AppLanguage
 
 @Composable
 fun t(english: String, polish: String = PolishText[english] ?: english): String =
-    if (LocalConfiguration.current.locales[0]?.language == "pl") polish else english
+    if (AppLanguageState.current == AppLanguage.Polish) polish else english
 
 fun localizedNow(english: String, polish: String): String =
-    if (AppCompatDelegate.getApplicationLocales().get(0)?.language == "pl") polish else english
+    if (AppLanguageState.current == AppLanguage.Polish) polish else english
+
+object AppLanguageState {
+    var current by mutableStateOf(readCurrentLanguage())
+        private set
+
+    fun set(language: AppLanguage) {
+        current = language
+    }
+
+    fun synchronize() {
+        current = readCurrentLanguage()
+    }
+
+    private fun readCurrentLanguage(): AppLanguage =
+        if (AppCompatDelegate.getApplicationLocales().get(0)?.language == "pl") AppLanguage.Polish else AppLanguage.English
+}
 
 private val PolishText = mapOf(
     "Settings" to "Ustawienia",

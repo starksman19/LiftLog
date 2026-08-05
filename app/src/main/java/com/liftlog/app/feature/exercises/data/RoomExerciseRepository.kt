@@ -101,48 +101,6 @@ class RoomExerciseRepository @Inject constructor(
                 category = ExerciseCategory.FreeWeights.name,
                 createdAtEpochMillis = 0,
             ),
-            ExerciseEntity(
-                name = "Deadlift",
-                primaryMuscle = "Back",
-                equipment = "Barbell",
-                category = ExerciseCategory.FreeWeights.name,
-                createdAtEpochMillis = 0,
-            ),
-            ExerciseEntity(
-                name = "Overhead Press",
-                primaryMuscle = "Shoulders",
-                equipment = "Barbell",
-                category = ExerciseCategory.FreeWeights.name,
-                createdAtEpochMillis = 0,
-            ),
-            ExerciseEntity(
-                name = "Lat Pulldown",
-                primaryMuscle = "Back",
-                equipment = "Machine",
-                category = ExerciseCategory.Machine.name,
-                createdAtEpochMillis = 0,
-            ),
-            ExerciseEntity(
-                name = "Dumbbell Row",
-                primaryMuscle = "Back",
-                equipment = "Dumbbell",
-                category = ExerciseCategory.FreeWeights.name,
-                createdAtEpochMillis = 0,
-            ),
-            ExerciseEntity(
-                name = "Leg Press",
-                primaryMuscle = "Legs",
-                equipment = "Machine",
-                category = ExerciseCategory.Machine.name,
-                createdAtEpochMillis = 0,
-            ),
-            ExerciseEntity(
-                name = "Biceps Curl",
-                primaryMuscle = "Arms",
-                equipment = "Dumbbell",
-                category = ExerciseCategory.FreeWeights.name,
-                createdAtEpochMillis = 0,
-            ),
         )
     }
 }

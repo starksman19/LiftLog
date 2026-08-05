@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liftlog.app.core.model.WorkoutSummary
 import com.liftlog.app.feature.workout.domain.ObserveCompletedWorkoutsUseCase
+import com.liftlog.app.feature.workout.domain.DeleteCompletedWorkoutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,10 +12,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class WorkoutHistoryViewModel @Inject constructor(
     observeCompletedWorkoutsUseCase: ObserveCompletedWorkoutsUseCase,
+    private val deleteCompletedWorkoutUseCase: DeleteCompletedWorkoutUseCase,
 ) : ViewModel() {
     private val searchQuery = MutableStateFlow("")
     private val gymFilter = MutableStateFlow<String?>(null)
@@ -58,6 +61,10 @@ class WorkoutHistoryViewModel @Inject constructor(
 
     fun updateDateFilter(value: String) {
         dateFilter.value = value
+    }
+
+    fun deleteWorkout(workoutId: Long) {
+        viewModelScope.launch { deleteCompletedWorkoutUseCase(workoutId) }
     }
 }
 

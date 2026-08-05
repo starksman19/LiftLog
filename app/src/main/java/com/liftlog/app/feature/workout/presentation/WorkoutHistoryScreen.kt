@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -22,6 +24,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -49,6 +55,7 @@ fun WorkoutHistoryRoute(
         onDateFilterChanged = viewModel::updateDateFilter,
         onGymSelected = viewModel::selectGym,
         onWorkoutSelected = onWorkoutSelected,
+        onDeleteWorkout = viewModel::deleteWorkout,
     )
 }
 
@@ -60,8 +67,10 @@ fun WorkoutHistoryScreen(
     onDateFilterChanged: (String) -> Unit,
     onGymSelected: (String?) -> Unit,
     onWorkoutSelected: (Long) -> Unit,
+    onDeleteWorkout: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var workoutPendingDelete by remember { mutableStateOf<WorkoutSummary?>(null) }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 96.dp),
@@ -108,25 +117,52 @@ fun WorkoutHistoryScreen(
             item { Text(t("No completed workouts match these filters."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
             items(state.workouts, key = { it.id }) { workout ->
-                WorkoutSummaryCard(workout, onClick = { onWorkoutSelected(workout.id) })
+                WorkoutSummaryCard(
+                    workout = workout,
+                    onClick = { onWorkoutSelected(workout.id) },
+                    onDelete = { workoutPendingDelete = workout },
+                )
             }
         }
+    }
+
+    workoutPendingDelete?.let { workout ->
+        AlertDialog(
+            onDismissRequest = { workoutPendingDelete = null },
+            title = { Text(t("Delete this workout?", "Usunąć ten trening?")) },
+            text = { Text(t("All exercises and sets in this session will be removed.", "Wszystkie ćwiczenia i serie z tego treningu zostaną usunięte.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteWorkout(workout.id)
+                    workoutPendingDelete = null
+                }) { Text(t("Delete")) }
+            },
+            dismissButton = { TextButton(onClick = { workoutPendingDelete = null }) { Text(t("Cancel")) } },
+        )
     }
 }
 
 @Composable
-private fun WorkoutSummaryCard(workout: WorkoutSummary, onClick: () -> Unit) {
+private fun WorkoutSummaryCard(workout: WorkoutSummary, onClick: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(workout.finishedAtEpochMillis)), fontWeight = FontWeight.SemiBold)
-            Text(
-                text = listOfNotNull(workout.gymLocation, t("${workout.exerciseCount} exercises", "${workout.exerciseCount} ćwiczeń"), t("${workout.volume.toInt()} kg volume", "Objętość: ${workout.volume.toInt()} kg")).joinToString(" - "),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            workout.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(workout.finishedAtEpochMillis)), fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = listOfNotNull(workout.gymLocation, t("${workout.exerciseCount} exercises", "${workout.exerciseCount} ćwiczeń"), t("${workout.volume.toInt()} kg volume", "Objętość: ${workout.volume.toInt()} kg")).joinToString(" - "),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                workout.exerciseNames.takeIf { it.isNotBlank() }?.let { names ->
+                    Text(names, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                workout.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Outlined.Delete, contentDescription = t("Delete workout", "Usuń trening"))
+            }
         }
     }
 }

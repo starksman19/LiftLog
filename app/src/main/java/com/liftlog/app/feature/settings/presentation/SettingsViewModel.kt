@@ -8,6 +8,7 @@ import com.liftlog.app.core.model.AppSettings
 import com.liftlog.app.core.model.AppLanguage
 import com.liftlog.app.core.model.WeightUnit
 import com.liftlog.app.core.ui.localization.localizedNow
+import com.liftlog.app.core.ui.localization.AppLanguageState
 import com.liftlog.app.feature.backup.domain.ExportBackupUseCase
 import com.liftlog.app.feature.backup.domain.BackupContents
 import com.liftlog.app.feature.backup.domain.BackupSelection
@@ -35,19 +36,21 @@ class SettingsViewModel @Inject constructor(
     private val gymLocationRepository: GymLocationRepository,
 ) : ViewModel() {
     private val operation = MutableStateFlow(BackupOperationState())
+    private val language = MutableStateFlow(AppLanguageState.current)
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsRepository.settings,
         operation,
         gymLocationRepository.observeLocations(),
-    ) { settings, operationState, locations ->
+        language,
+    ) { settings, operationState, locations, selectedLanguage ->
         SettingsUiState(
             settings = settings,
             isWorking = operationState.isWorking,
             message = operationState.message,
             importPreview = operationState.importPreview,
             locations = locations,
-            language = currentLanguage(),
+            language = selectedLanguage,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -64,6 +67,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setLanguage(language: AppLanguage) {
+        AppLanguageState.set(language)
+        this.language.value = language
         AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language.languageTag))
     }
 
@@ -144,8 +149,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    private fun currentLanguage(): AppLanguage =
-        if (AppCompatDelegate.getApplicationLocales().get(0)?.language == "pl") AppLanguage.Polish else AppLanguage.English
 }
 
 data class SettingsUiState(

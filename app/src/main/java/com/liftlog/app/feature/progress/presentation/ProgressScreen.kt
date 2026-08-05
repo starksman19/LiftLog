@@ -21,6 +21,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -41,16 +45,18 @@ import java.util.Locale
 
 @Composable
 fun ProgressRoute(
+    onWorkoutHistory: () -> Unit,
     viewModel: ProgressViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ProgressScreen(state = state, onRangeChanged = viewModel::setRange)
+    ProgressScreen(state = state, onRangeChanged = viewModel::setRange, onWorkoutHistory = onWorkoutHistory)
 }
 
 @Composable
 fun ProgressScreen(
     state: ProgressUiState,
     onRangeChanged: (Int) -> Unit,
+    onWorkoutHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val totalVolume = state.recentVolumes.sumOf { it.volume }
@@ -98,6 +104,13 @@ fun ProgressScreen(
                     value = "${totalVolume.compact()} kg",
                     modifier = Modifier.weight(1f),
                 )
+            }
+        }
+
+        item {
+            OutlinedButton(onClick = onWorkoutHistory, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.History, contentDescription = null)
+                Text(t("Full workout history", "Pełna historia treningów"), modifier = Modifier.padding(start = 8.dp))
             }
         }
 

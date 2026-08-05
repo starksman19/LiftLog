@@ -10,6 +10,7 @@ import com.liftlog.app.core.database.entity.WorkoutSessionEntity
 import com.liftlog.app.core.database.model.WorkoutExerciseRow
 import com.liftlog.app.core.database.model.RecentExercisePerformanceRow
 import com.liftlog.app.core.database.model.WorkoutSummaryRow
+import com.liftlog.app.core.database.model.TrainingReportRow
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -108,6 +109,40 @@ interface WorkoutDao {
         """,
     )
     suspend fun getRecentExercisePerformances(exerciseId: Long): List<RecentExercisePerformanceRow>
+
+    @Query(
+        """
+        SELECT ws.id AS workoutId,
+               ws.startedAtEpochMillis AS startedAtEpochMillis,
+               ws.finishedAtEpochMillis AS finishedAtEpochMillis,
+               ws.gymLocation AS gymLocation,
+               ws.notes AS workoutNotes,
+               we.id AS workoutExerciseId,
+               e.id AS exerciseId,
+               e.name AS exerciseName,
+               e.category AS exerciseCategory,
+               e.primaryMuscle AS primaryMuscle,
+               e.equipment AS equipment,
+               we.notes AS exerciseNotes,
+               we.orderIndex AS exerciseOrderIndex,
+               se.id AS setId,
+               se.setNumber AS setNumber,
+               se.weight AS weight,
+               se.reps AS reps,
+               se.completedAtEpochMillis AS completedAtEpochMillis
+        FROM workout_sessions AS ws
+        LEFT JOIN workout_exercises AS we ON we.workoutSessionId = ws.id
+        LEFT JOIN exercises AS e ON e.id = we.exerciseId
+        LEFT JOIN set_entries AS se ON se.workoutExerciseId = we.id
+        WHERE ws.finishedAtEpochMillis >= :startEpochMillis
+          AND ws.finishedAtEpochMillis < :endExclusiveEpochMillis
+        ORDER BY ws.finishedAtEpochMillis ASC, we.orderIndex ASC, se.setNumber ASC
+        """,
+    )
+    suspend fun getTrainingReportRows(
+        startEpochMillis: Long,
+        endExclusiveEpochMillis: Long,
+    ): List<TrainingReportRow>
 
     @Query(
         """

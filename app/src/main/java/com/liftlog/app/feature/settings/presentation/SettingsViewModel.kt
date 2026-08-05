@@ -15,6 +15,7 @@ import com.liftlog.app.feature.backup.domain.BackupSelection
 import com.liftlog.app.feature.backup.domain.InspectBackupUseCase
 import com.liftlog.app.feature.backup.domain.ImportBackupUseCase
 import com.liftlog.app.feature.locations.domain.GymLocationRepository
+import com.liftlog.app.feature.report.domain.ExportTrainingReportUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -33,6 +35,7 @@ class SettingsViewModel @Inject constructor(
     private val exportBackupUseCase: ExportBackupUseCase,
     private val inspectBackupUseCase: InspectBackupUseCase,
     private val importBackupUseCase: ImportBackupUseCase,
+    private val exportTrainingReportUseCase: ExportTrainingReportUseCase,
     private val gymLocationRepository: GymLocationRepository,
 ) : ViewModel() {
     private val operation = MutableStateFlow(BackupOperationState())
@@ -78,6 +81,16 @@ class SettingsViewModel @Inject constructor(
             localizedNow(
                 "Exported ${summary.workouts} workouts and ${summary.sets} sets.",
                 "Wyeksportowano ${summary.workouts} treningów i ${summary.sets} serii.",
+            )
+        },
+    )
+
+    fun exportTrainingReportTo(uri: Uri, startDate: LocalDate, endDate: LocalDate) = runTrainingReportOperation(
+        action = { exportTrainingReportUseCase(uri, startDate, endDate, AppLanguageState.current) },
+        success = { summary ->
+            localizedNow(
+                "Exported ${summary.workouts} workouts, ${summary.exercises} exercise entries, and ${summary.sets} sets to Excel.",
+                "Wyeksportowano do Excela: ${summary.workouts} treningów, ${summary.exercises} wpisów ćwiczeń i ${summary.sets} serii.",
             )
         },
     )
@@ -142,6 +155,27 @@ class SettingsViewModel @Inject constructor(
                         localizedNow(
                             "Backup failed: ${it.message ?: "unknown error"}",
                             "Operacja na kopii zapasowej nie powiodła się: ${it.message ?: "nieznany błąd"}",
+                        )
+                    },
+                )
+            operation.value = BackupOperationState(message = message)
+        }
+    }
+
+    private fun runTrainingReportOperation(
+        action: suspend () -> com.liftlog.app.feature.report.domain.TrainingReportSummary,
+        success: (com.liftlog.app.feature.report.domain.TrainingReportSummary) -> String,
+    ) {
+        if (operation.value.isWorking) return
+        viewModelScope.launch {
+            operation.value = BackupOperationState(isWorking = true)
+            val message = runCatching { action() }
+                .fold(
+                    onSuccess = success,
+                    onFailure = {
+                        localizedNow(
+                            "Excel export failed: ${it.message ?: "unknown error"}",
+                            "Eksport do Excela nie powiódł się: ${it.message ?: "nieznany błąd"}",
                         )
                     },
                 )

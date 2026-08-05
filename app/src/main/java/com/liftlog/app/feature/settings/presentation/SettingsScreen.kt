@@ -48,6 +48,7 @@ import com.liftlog.app.core.model.AppLanguage
 import com.liftlog.app.feature.backup.domain.BackupSection
 import com.liftlog.app.feature.backup.domain.BackupSelection
 import com.liftlog.app.core.ui.localization.t
+import java.time.LocalDate
 
 @Composable
 fun SettingsRoute(
@@ -60,6 +61,7 @@ fun SettingsRoute(
         onLanguageChanged = viewModel::setLanguage,
         onDefaultRestChanged = viewModel::setDefaultRestSeconds,
         onExport = viewModel::exportTo,
+        onExportTrainingReport = viewModel::exportTrainingReportTo,
         onInspectImport = viewModel::inspectImport,
         onImport = viewModel::importFrom,
         onDismissImportPreview = viewModel::dismissImportPreview,
@@ -77,6 +79,7 @@ fun SettingsScreen(
     onLanguageChanged: (AppLanguage) -> Unit,
     onDefaultRestChanged: (Int) -> Unit,
     onExport: (android.net.Uri, BackupSelection) -> Unit,
+    onExportTrainingReport: (android.net.Uri, LocalDate, LocalDate) -> Unit,
     onInspectImport: (android.net.Uri) -> Unit,
     onImport: (android.net.Uri) -> Unit,
     onDismissImportPreview: () -> Unit,
@@ -87,7 +90,11 @@ fun SettingsScreen(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var exportDialogVisible by remember { mutableStateOf(false) }
+    var trainingReportDialogVisible by remember { mutableStateOf(false) }
     var exportSelection by remember { mutableStateOf(BackupSelection.Everything) }
+    var pendingTrainingReportRange by remember {
+        mutableStateOf(TrainingReportDateRange(LocalDate.now().minusMonths(1), LocalDate.now()))
+    }
     var locationPendingEdit by remember { mutableStateOf<String?>(null) }
     var locationPendingDelete by remember { mutableStateOf<String?>(null) }
     val exportLauncher = rememberLauncherForActivityResult(
@@ -97,6 +104,16 @@ fun SettingsScreen(
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri -> uri?.let(onInspectImport) },
+    )
+    val trainingReportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ),
+        onResult = { uri ->
+            uri?.let {
+                onExportTrainingReport(it, pendingTrainingReportRange.startDate, pendingTrainingReportRange.endDate)
+            }
+        },
     )
 
     LaunchedEffect(state.message) {
@@ -201,6 +218,17 @@ fun SettingsScreen(
                         androidx.compose.material3.Icon(Icons.Outlined.FileDownload, contentDescription = null)
                         Text(t("Export backup"), modifier = Modifier.padding(start = 8.dp))
                     }
+                    OutlinedButton(
+                        onClick = { trainingReportDialogVisible = true },
+                        enabled = !state.isWorking,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        androidx.compose.material3.Icon(Icons.Outlined.FileDownload, contentDescription = null)
+                        Text(
+                            t("Export training report (Excel)", "Eksportuj raport treningowy (Excel)"),
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
                     Button(
                         onClick = { importLauncher.launch(arrayOf("application/json", "text/plain")) },
                         enabled = !state.isWorking,
@@ -222,6 +250,19 @@ fun SettingsScreen(
             onConfirm = {
                 exportDialogVisible = false
                 exportLauncher.launch("liftlog-backup.json")
+            },
+        )
+    }
+
+    if (trainingReportDialogVisible) {
+        TrainingReportExportDialog(
+            onDismiss = { trainingReportDialogVisible = false },
+            onConfirm = { range ->
+                pendingTrainingReportRange = range
+                trainingReportDialogVisible = false
+                trainingReportLauncher.launch(
+                    "liftlog-training-report-${range.startDate}-to-${range.endDate}.xlsx",
+                )
             },
         )
     }
@@ -332,6 +373,63 @@ private fun ExportSelectionDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(t("Cancel")) }
         },
+    )
+}
+
+private data class TrainingReportDateRange(
+    val startDate: LocalDate,
+    val endDate: LocalDate,
+)
+
+@Composable
+private fun TrainingReportExportDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (TrainingReportDateRange) -> Unit,
+) {
+    val today = remember { LocalDate.now() }
+    var startDateText by remember { mutableStateOf(today.minusMonths(1).toString()) }
+    var endDateText by remember { mutableStateOf(today.toString()) }
+    val startDate = runCatching { LocalDate.parse(startDateText) }.getOrNull()
+    val endDate = runCatching { LocalDate.parse(endDateText) }.getOrNull()
+    val isValid = startDate != null && endDate != null && !endDate.isBefore(startDate)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(t("Export training report", "Eksportuj raport treningowy")) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    t(
+                        "The Excel file includes summary, workouts, exercises, and sets sheets.",
+                        "Plik Excel zawiera arkusze: podsumowanie, treningi, ćwiczenia i serie.",
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = startDateText,
+                    onValueChange = { startDateText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(t("Start date (YYYY-MM-DD)", "Data od (YYYY-MM-DD)")) },
+                    singleLine = true,
+                    isError = startDateText.isNotBlank() && startDate == null,
+                )
+                OutlinedTextField(
+                    value = endDateText,
+                    onValueChange = { endDateText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(t("End date (YYYY-MM-DD)", "Data do (YYYY-MM-DD)")) },
+                    singleLine = true,
+                    isError = endDateText.isNotBlank() && (endDate == null || (startDate != null && endDate.isBefore(startDate))),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(TrainingReportDateRange(requireNotNull(startDate), requireNotNull(endDate))) },
+                enabled = isValid,
+            ) { Text(t("Choose file", "Wybierz plik")) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }
 

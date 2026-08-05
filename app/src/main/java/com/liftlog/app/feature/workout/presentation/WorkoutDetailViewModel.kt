@@ -35,16 +35,20 @@ class WorkoutDetailViewModel @Inject constructor(
     private val updateWorkoutExerciseNotesUseCase: UpdateWorkoutExerciseNotesUseCase,
     private val deleteWorkoutExerciseUseCase: DeleteWorkoutExerciseUseCase,
 ) : ViewModel() {
-    fun uiState(workoutId: Long): StateFlow<WorkoutDetailUiState> = combine(
-        observeWorkoutDetailUseCase(workoutId),
-        observeExercisesUseCase(""),
-    ) { workout, exercises ->
-        WorkoutDetailUiState(workout = workout, availableExercises = exercises)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = WorkoutDetailUiState(),
-    )
+    private val uiStates = mutableMapOf<Long, StateFlow<WorkoutDetailUiState>>()
+
+    fun uiState(workoutId: Long): StateFlow<WorkoutDetailUiState> = uiStates.getOrPut(workoutId) {
+        combine(
+            observeWorkoutDetailUseCase(workoutId),
+            observeExercisesUseCase(""),
+        ) { workout, exercises ->
+            WorkoutDetailUiState(workout = workout, availableExercises = exercises)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = WorkoutDetailUiState(),
+        )
+    }
 
     fun updateWorkout(workout: WorkoutDetail, startedAt: Long, finishedAt: Long, gym: String?, notes: String?) {
         viewModelScope.launch { updateCompletedWorkoutUseCase(workout.id, startedAt, finishedAt, gym, notes) }

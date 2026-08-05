@@ -47,7 +47,8 @@ fun WorkoutDetailRoute(
     onBack: () -> Unit,
     viewModel: WorkoutDetailViewModel = hiltViewModel(),
 ) {
-    val state by viewModel.uiState(workoutId).collectAsStateWithLifecycle()
+    val uiState = remember(workoutId) { viewModel.uiState(workoutId) }
+    val state by uiState.collectAsStateWithLifecycle()
     WorkoutDetailScreen(
         state = state,
         onBack = onBack,

@@ -2,6 +2,7 @@ package com.liftlog.app.feature.workout.presentation
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,12 +14,15 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +58,7 @@ fun WorkoutHistoryRoute(
         onSearchChanged = viewModel::updateSearch,
         onDateFilterChanged = viewModel::updateDateFilter,
         onGymSelected = viewModel::selectGym,
+        onSortModeChanged = viewModel::updateSortMode,
         onWorkoutSelected = onWorkoutSelected,
         onDeleteWorkout = viewModel::deleteWorkout,
     )
@@ -66,22 +71,42 @@ fun WorkoutHistoryScreen(
     onSearchChanged: (String) -> Unit,
     onDateFilterChanged: (String) -> Unit,
     onGymSelected: (String?) -> Unit,
+    onSortModeChanged: (WorkoutSortMode) -> Unit,
     onWorkoutSelected: (Long) -> Unit,
     onDeleteWorkout: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var workoutPendingDelete by remember { mutableStateOf<WorkoutSummary?>(null) }
+    var sortMenuVisible by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = t("Back"))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = t("Back"))
+                    }
+                    Text(t("Workout history"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 }
-                Text(t("Workout history"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Box {
+                    IconButton(onClick = { sortMenuVisible = true }) {
+                        Icon(Icons.AutoMirrored.Outlined.Sort, contentDescription = t("Sort", "Sortuj"))
+                    }
+                    DropdownMenu(expanded = sortMenuVisible, onDismissRequest = { sortMenuVisible = false }) {
+                        WorkoutSortMode.entries.forEach { sortMode ->
+                            DropdownMenuItem(
+                                text = { Text(sortMode.label()) },
+                                onClick = {
+                                    onSortModeChanged(sortMode)
+                                    sortMenuVisible = false
+                                },
+                            )
+                        }
+                    }
+                }
             }
         }
         item {
@@ -152,11 +177,11 @@ private fun WorkoutSummaryCard(workout: WorkoutSummary, onClick: () -> Unit, onD
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(workout.finishedAtEpochMillis)), fontWeight = FontWeight.SemiBold)
                 Text(
-                    text = listOfNotNull(workout.gymLocation, t("${workout.exerciseCount} exercises", "${workout.exerciseCount} ćwiczeń"), t("${workout.volume.toInt()} kg volume", "Objętość: ${workout.volume.toInt()} kg")).joinToString(" - "),
+                    text = listOfNotNull(workout.gymLocation, t("${workout.exerciseCount} exercises", "${workout.exerciseCount} ćwiczeń")).joinToString(" - "),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 workout.exerciseNames.takeIf { it.isNotBlank() }?.let { names ->
-                    Text(names, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(names.split(',').joinToString(separator = "\n") { it.trim() }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 workout.notes?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
@@ -165,4 +190,11 @@ private fun WorkoutSummaryCard(workout: WorkoutSummary, onClick: () -> Unit, onD
             }
         }
     }
+}
+
+@Composable
+private fun WorkoutSortMode.label(): String = when (this) {
+    WorkoutSortMode.NewestFirst -> t("Newest first", "Najnowsze najpierw")
+    WorkoutSortMode.OldestFirst -> t("Oldest first", "Najstarsze najpierw")
+    WorkoutSortMode.Location -> t("Location", "Lokalizacja")
 }

@@ -22,18 +22,21 @@ class WorkoutHistoryViewModel @Inject constructor(
     private val searchQuery = MutableStateFlow("")
     private val gymFilter = MutableStateFlow<String?>(null)
     private val dateFilter = MutableStateFlow("")
+    private val sortMode = MutableStateFlow(WorkoutSortMode.NewestFirst)
 
     val uiState: StateFlow<WorkoutHistoryUiState> = combine(
         observeCompletedWorkoutsUseCase(),
         searchQuery,
         gymFilter,
         dateFilter,
-    ) { workouts, query, selectedGym, dateQuery ->
+        sortMode,
+    ) { workouts, query, selectedGym, dateQuery, currentSortMode ->
         val gyms = workouts.mapNotNull { it.gymLocation }.distinct().sorted()
         WorkoutHistoryUiState(
             searchQuery = query,
             selectedGym = selectedGym,
             dateFilter = dateQuery,
+            sortMode = currentSortMode,
             gyms = gyms,
             workouts = workouts.filter { workout ->
                 val matchesGym = selectedGym == null || workout.gymLocation.equals(selectedGym, ignoreCase = true)
@@ -43,7 +46,7 @@ class WorkoutHistoryViewModel @Inject constructor(
                 matchesGym &&
                     (query.isBlank() || searchable.contains(query, ignoreCase = true)) &&
                     (dateQuery.isBlank() || dateText.startsWith(dateQuery))
-            },
+            }.sortedWith(currentSortMode.comparator),
         )
     }.stateIn(
         scope = viewModelScope,
@@ -63,6 +66,10 @@ class WorkoutHistoryViewModel @Inject constructor(
         dateFilter.value = value
     }
 
+    fun updateSortMode(value: WorkoutSortMode) {
+        sortMode.value = value
+    }
+
     fun deleteWorkout(workoutId: Long) {
         viewModelScope.launch { deleteCompletedWorkoutUseCase(workoutId) }
     }
@@ -72,6 +79,14 @@ data class WorkoutHistoryUiState(
     val searchQuery: String = "",
     val selectedGym: String? = null,
     val dateFilter: String = "",
+    val sortMode: WorkoutSortMode = WorkoutSortMode.NewestFirst,
     val gyms: List<String> = emptyList(),
     val workouts: List<WorkoutSummary> = emptyList(),
 )
+
+enum class WorkoutSortMode(val comparator: Comparator<WorkoutSummary>) {
+    NewestFirst(compareByDescending { it.finishedAtEpochMillis }),
+    OldestFirst(compareBy { it.finishedAtEpochMillis }),
+    Location(compareBy<WorkoutSummary, String>(String.CASE_INSENSITIVE_ORDER) { it.gymLocation.orEmpty() }
+        .thenByDescending { it.finishedAtEpochMillis }),
+}

@@ -44,7 +44,9 @@ interface GymLocationDao {
 
     @Transaction
     suspend fun rename(oldName: String, newName: String) {
-        if (!oldName.equals(newName, ignoreCase = true)) {
+        if (oldName.equals(newName, ignoreCase = true)) {
+            updateLocationName(oldName, newName)
+        } else {
             if (locationCount(newName) == 0) updateLocationName(oldName, newName)
             else deleteLocation(oldName)
         }

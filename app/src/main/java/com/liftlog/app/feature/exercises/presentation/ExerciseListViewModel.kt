@@ -34,12 +34,16 @@ class ExerciseListViewModel @Inject constructor(
     gymLocationRepository: GymLocationRepository,
 ) : ViewModel() {
     private val query = MutableStateFlow("")
+    private val sortMode = MutableStateFlow(ExerciseSortMode.NameAscending)
 
-    val uiState: StateFlow<ExerciseListUiState> = query.flatMapLatest { currentQuery ->
+    val uiState: StateFlow<ExerciseListUiState> = combine(query, sortMode) { currentQuery, currentSortMode ->
+        currentQuery to currentSortMode
+    }.flatMapLatest { (currentQuery, currentSortMode) ->
         combine(observeExercisesUseCase(currentQuery), gymLocationRepository.observeLocations()) { exercises, locations ->
             ExerciseListUiState(
                 searchQuery = currentQuery,
-                exercises = exercises,
+                sortMode = currentSortMode,
+                exercises = exercises.sortedWith(currentSortMode.comparator),
                 locations = locations,
             )
         }
@@ -59,6 +63,10 @@ class ExerciseListViewModel @Inject constructor(
         query.update { value }
     }
 
+    fun onSortModeChanged(value: ExerciseSortMode) {
+        sortMode.value = value
+    }
+
     fun addCustomExercise(draft: ExerciseDraft) {
         viewModelScope.launch {
             addCustomExerciseUseCase(draft)
@@ -76,6 +84,13 @@ class ExerciseListViewModel @Inject constructor(
 
 data class ExerciseListUiState(
     val searchQuery: String = "",
+    val sortMode: ExerciseSortMode = ExerciseSortMode.NameAscending,
     val exercises: List<Exercise> = emptyList(),
     val locations: List<String> = emptyList(),
 )
+
+enum class ExerciseSortMode(val comparator: Comparator<Exercise>) {
+    NameAscending(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }),
+    NameDescending(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name }),
+    Category(compareBy<Exercise> { it.category.name }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.name }),
+}

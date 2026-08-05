@@ -59,7 +59,6 @@ fun ProgressScreen(
     onWorkoutHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val totalVolume = state.recentVolumes.sumOf { it.volume }
     val workouts = state.recentVolumes.size
 
     LazyColumn(
@@ -93,18 +92,11 @@ fun ProgressScreen(
         }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DashboardStat(
-                    label = t("Last 7 workouts", "Ostatnie treningi"),
-                    value = workouts.toString(),
-                    modifier = Modifier.weight(1f),
-                )
-                DashboardStat(
-                    label = t("Training volume", "Objętość treningowa"),
-                    value = "${totalVolume.compact()} kg",
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            DashboardStat(
+                label = t("Recent workouts", "Ostatnie treningi"),
+                value = workouts.toString(),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         item {

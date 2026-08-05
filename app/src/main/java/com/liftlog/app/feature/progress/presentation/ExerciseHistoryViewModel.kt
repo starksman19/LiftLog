@@ -19,26 +19,30 @@ class ExerciseHistoryViewModel @Inject constructor(
     private val observeExercisesUseCase: ObserveExercisesUseCase,
     private val observeExerciseHistoryUseCase: ObserveExerciseHistoryUseCase,
 ) : ViewModel() {
-    fun uiState(exerciseId: Long): StateFlow<ExerciseHistoryUiState> = combine(
-        observeExercisesUseCase("").map { exercises -> exercises.firstOrNull { it.id == exerciseId } },
-        observeExerciseHistoryUseCase(exerciseId),
-    ) { exercise, sets ->
-        ExerciseHistoryUiState(
-            exerciseName = exercise?.name.orEmpty(),
-            exercise = exercise,
-            history = sets.groupBy { it.workoutSessionId }
-                .map { (_, sessionSets) ->
-                    ExerciseHistorySession(
-                        finishedAtEpochMillis = sessionSets.first().finishedAtEpochMillis,
-                        sets = sessionSets,
-                    )
-                },
+    private val uiStates = mutableMapOf<Long, StateFlow<ExerciseHistoryUiState>>()
+
+    fun uiState(exerciseId: Long): StateFlow<ExerciseHistoryUiState> = uiStates.getOrPut(exerciseId) {
+        combine(
+            observeExercisesUseCase("").map { exercises -> exercises.firstOrNull { it.id == exerciseId } },
+            observeExerciseHistoryUseCase(exerciseId),
+        ) { exercise, sets ->
+            ExerciseHistoryUiState(
+                exerciseName = exercise?.name.orEmpty(),
+                exercise = exercise,
+                history = sets.groupBy { it.workoutSessionId }
+                    .map { (_, sessionSets) ->
+                        ExerciseHistorySession(
+                            finishedAtEpochMillis = sessionSets.first().finishedAtEpochMillis,
+                            sets = sessionSets,
+                        )
+                    },
+            )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = ExerciseHistoryUiState(),
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = ExerciseHistoryUiState(),
-    )
+    }
 }
 
 data class ExerciseHistoryUiState(

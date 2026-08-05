@@ -1,7 +1,10 @@
 package com.liftlog.app.feature.exercises.presentation
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Image
@@ -34,6 +38,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -62,6 +68,7 @@ import com.liftlog.app.core.ui.localization.t
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 
 @Composable
 fun ExerciseListRoute(
@@ -76,6 +83,7 @@ fun ExerciseListRoute(
         onAddCustomExercise = viewModel::addCustomExercise,
         onUpdateExercise = viewModel::updateExercise,
         onDeleteExercise = viewModel::deleteExercise,
+        onSortModeChanged = viewModel::onSortModeChanged,
         onExerciseSelected = onExerciseSelected,
     )
 }
@@ -88,12 +96,14 @@ fun ExerciseListScreen(
     onAddCustomExercise: (ExerciseDraft) -> Unit,
     onUpdateExercise: (Long, ExerciseDraft) -> Unit,
     onDeleteExercise: (Long) -> Unit,
+    onSortModeChanged: (ExerciseSortMode) -> Unit,
     onExerciseSelected: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var addDialogVisible by remember { mutableStateOf(false) }
     var exercisePendingEdit by remember { mutableStateOf<Exercise?>(null) }
     var exercisePendingDelete by remember { mutableStateOf<Exercise?>(null) }
+    var sortMenuVisible by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
@@ -112,15 +122,32 @@ fun ExerciseListScreen(
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                modifier = Modifier.padding(top = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = t("Exercises"),
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                 )
+                Box {
+                    IconButton(onClick = { sortMenuVisible = true }) {
+                        Icon(Icons.AutoMirrored.Outlined.Sort, contentDescription = t("Sort", "Sortuj"))
+                    }
+                    DropdownMenu(expanded = sortMenuVisible, onDismissRequest = { sortMenuVisible = false }) {
+                        ExerciseSortMode.entries.forEach { sortMode ->
+                            DropdownMenuItem(
+                                text = { Text(sortMode.label()) },
+                                onClick = {
+                                    onSortModeChanged(sortMode)
+                                    sortMenuVisible = false
+                                },
+                            )
+                        }
+                    }
+                }
             }
 
             OutlinedTextField(
@@ -222,8 +249,7 @@ internal fun CustomExerciseDialog(
                     context.contentResolver.openInputStream(uri)?.use { stream ->
                         val bytes = stream.readBytes()
                         require(bytes.size <= 20 * 1024 * 1024) { "The photo is larger than 20 MB." }
-                        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-                        "data:$mimeType;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}"
+                        bytes.toCompressedImageDataUrl()
                     } ?: error("Unable to read the selected photo.")
                 }
             }.getOrElse { error ->
@@ -355,6 +381,48 @@ internal fun CustomExerciseDialog(
 }
 
 @Composable
+private fun ExerciseSortMode.label(): String = when (this) {
+    ExerciseSortMode.NameAscending -> t("Name A-Z", "Nazwa A-Z")
+    ExerciseSortMode.NameDescending -> t("Name Z-A", "Nazwa Z-A")
+    ExerciseSortMode.Category -> t("Category", "Kategoria")
+}
+
+private fun ByteArray.toCompressedImageDataUrl(): String {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(this, 0, size, bounds)
+    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "The selected file is not a supported image." }
+
+    val bitmap = BitmapFactory.decodeByteArray(
+        this,
+        0,
+        size,
+        BitmapFactory.Options().apply {
+            inSampleSize = imageSampleSize(bounds.outWidth, bounds.outHeight)
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        },
+    ) ?: error("Unable to decode the selected photo.")
+    val scaledBitmap = bitmap.scaleDownTo(1_920)
+    val output = ByteArrayOutputStream()
+    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, output)
+    if (scaledBitmap !== bitmap) bitmap.recycle()
+    scaledBitmap.recycle()
+    return "data:image/jpeg;base64,${Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)}"
+}
+
+private fun imageSampleSize(width: Int, height: Int): Int {
+    var sampleSize = 1
+    while (maxOf(width / sampleSize, height / sampleSize) > 1_920) sampleSize *= 2
+    return sampleSize
+}
+
+private fun Bitmap.scaleDownTo(maxDimension: Int): Bitmap {
+    val largestDimension = maxOf(width, height)
+    if (largestDimension <= maxDimension) return this
+    val scale = maxDimension.toFloat() / largestDimension
+    return Bitmap.createScaledBitmap(this, (width * scale).toInt(), (height * scale).toInt(), true)
+}
+
+@Composable
 private fun ExerciseCard(
     exercise: Exercise,
     onClick: () -> Unit,
@@ -445,6 +513,7 @@ private fun ExerciseListScreenPreview() {
             onAddCustomExercise = {},
             onUpdateExercise = { _, _ -> },
             onDeleteExercise = {},
+            onSortModeChanged = {},
             onExerciseSelected = {},
         )
     }

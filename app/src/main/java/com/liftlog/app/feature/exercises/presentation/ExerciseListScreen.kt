@@ -221,7 +221,7 @@ internal fun CustomExerciseDialog(
                 withContext(Dispatchers.IO) {
                     context.contentResolver.openInputStream(uri)?.use { stream ->
                         val bytes = stream.readBytes()
-                        require(bytes.size <= 3 * 1024 * 1024) { "The photo is larger than 3 MB." }
+                        require(bytes.size <= 20 * 1024 * 1024) { "The photo is larger than 20 MB." }
                         val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
                         "data:$mimeType;base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}"
                     } ?: error("Unable to read the selected photo.")

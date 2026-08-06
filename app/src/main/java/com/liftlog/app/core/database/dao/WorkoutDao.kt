@@ -97,14 +97,8 @@ interface WorkoutDao {
         FROM workout_sessions AS ws
         JOIN workout_exercises AS we ON we.workoutSessionId = ws.id
         JOIN set_entries AS se ON se.workoutExerciseId = we.id
-        WHERE ws.id IN (
-            SELECT ws2.id
-            FROM workout_sessions AS ws2
-            JOIN workout_exercises AS we2 ON we2.workoutSessionId = ws2.id
-            WHERE ws2.finishedAtEpochMillis IS NOT NULL AND we2.exerciseId = :exerciseId
-            ORDER BY ws2.finishedAtEpochMillis DESC
-            LIMIT 2
-        ) AND we.exerciseId = :exerciseId
+        WHERE ws.finishedAtEpochMillis IS NOT NULL
+          AND we.exerciseId = :exerciseId
         ORDER BY ws.finishedAtEpochMillis DESC, se.setNumber ASC
         """,
     )

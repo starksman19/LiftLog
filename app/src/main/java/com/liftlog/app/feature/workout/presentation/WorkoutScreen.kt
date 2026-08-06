@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -339,20 +343,20 @@ private fun ActiveWorkoutScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 20.dp),
+                .padding(top = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column {
                 Text(
                     text = t("Active Workout"),
-                    style = MaterialTheme.typography.headlineLarge,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
@@ -360,7 +364,7 @@ private fun ActiveWorkoutScreen(
                         "${activeWorkout.exercises.size} exercises • ${activeWorkout.exercises.sumOf { it.sets.size }} sets",
                         "${activeWorkout.exercises.size} ćwiczeń • ${activeWorkout.exercises.sumOf { it.sets.size }} serii",
                     ),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 activeWorkout.gymLocation?.let { location ->
@@ -372,7 +376,7 @@ private fun ActiveWorkoutScreen(
                         )
                         Text(
                             text = location,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -380,7 +384,7 @@ private fun ActiveWorkoutScreen(
             }
 
             Row {
-                IconButton(onClick = { workoutDetailsDialogVisible = true }) {
+                IconButton(onClick = { workoutDetailsDialogVisible = true }, modifier = Modifier.size(40.dp)) {
                     Icon(
                         imageVector = Icons.Outlined.Edit,
                         contentDescription = t("Edit workout details", "Edytuj szczegóły treningu"),
@@ -389,6 +393,7 @@ private fun ActiveWorkoutScreen(
                 IconButton(
                     onClick = { saveTemplateDialogVisible = true },
                     enabled = activeWorkout.exercises.isNotEmpty(),
+                    modifier = Modifier.size(40.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.BookmarkAdd,
@@ -398,7 +403,7 @@ private fun ActiveWorkoutScreen(
             }
         }
 
-        OutlinedButton(onClick = { exercisePickerVisible = true }, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = { exercisePickerVisible = true }, modifier = Modifier.fillMaxWidth().height(42.dp)) {
             Icon(Icons.Outlined.Add, contentDescription = null)
             Text(t("Add exercises"), modifier = Modifier.padding(start = 8.dp))
         }
@@ -409,14 +414,14 @@ private fun ActiveWorkoutScreen(
         ) {
             OutlinedButton(
                 onClick = { discardConfirmationVisible = true },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).height(42.dp),
             ) {
                 Icon(Icons.Outlined.Delete, contentDescription = null)
                 Text(t("Discard", "Odrzuć"), modifier = Modifier.padding(start = 8.dp))
             }
             Button(
                 onClick = { finishConfirmationVisible = true },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).height(42.dp),
             ) {
                 Icon(Icons.Outlined.Check, contentDescription = null)
                 Text(t("Finish workout", "Zakończ trening"), modifier = Modifier.padding(start = 8.dp))
@@ -426,7 +431,7 @@ private fun ActiveWorkoutScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (activeWorkout.exercises.isEmpty()) {
                 item {
@@ -714,8 +719,8 @@ internal fun LoggedExerciseCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -725,7 +730,7 @@ internal fun LoggedExerciseCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = exercise.name,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
                     val details = listOf(exercise.primaryMuscle, exercise.equipment)
@@ -734,27 +739,27 @@ internal fun LoggedExerciseCard(
                     if (details.isNotBlank()) {
                         Text(
                             text = details,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Text(
                         text = t("${exercise.sets.size} sets", "${exercise.sets.size} serii"),
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
 
                 Row {
-                    IconButton(onClick = { editNotesVisible = true }) {
+                    IconButton(onClick = { editNotesVisible = true }, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.Outlined.Edit, contentDescription = t("Edit exercise notes", "Edytuj notatki ćwiczenia"))
                     }
                     if (onShowHistory != null) {
-                        IconButton(onClick = { onShowHistory(exercise.exerciseId, exercise.name) }) {
+                        IconButton(onClick = { onShowHistory(exercise.exerciseId, exercise.name) }, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Outlined.Info, contentDescription = t("View recent exercise results", "Pokaż ostatnie wyniki ćwiczenia"))
                         }
                     }
-                    IconButton(onClick = { exercisePendingDeletion = true }) {
+                    IconButton(onClick = { exercisePendingDeletion = true }, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.Outlined.Delete, contentDescription = t("Remove exercise from workout", "Usuń ćwiczenie z treningu"))
                     }
                 }
@@ -769,7 +774,7 @@ internal fun LoggedExerciseCard(
                         initialReps = previous?.reps ?: 10,
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(40.dp),
             ) {
                 Icon(imageVector = Icons.Outlined.Add, contentDescription = null)
                 Text(text = t("Add set", "Dodaj serię"), modifier = Modifier.padding(start = 8.dp))
@@ -778,7 +783,7 @@ internal fun LoggedExerciseCard(
             exercise.notes?.let { notes ->
                 Text(
                     text = notes,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -786,7 +791,7 @@ internal fun LoggedExerciseCard(
             if (exercise.sets.isEmpty()) {
                 Text(
                     text = t("No sets yet"),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
@@ -875,9 +880,12 @@ private fun ExerciseHistoryDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(t("Recent results: ${history.exerciseName}", "Ostatnie wyniki: ${history.exerciseName}")) },
+        title = { Text(t("Exercise history: ${history.exerciseName}", "Historia cwiczenia: ${history.exerciseName}")) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 if (history.performances.isEmpty()) {
                     Text(
                         t("No completed workouts have been recorded for this exercise yet.", "Nie ma jeszcze ukończonych treningów z tym ćwiczeniem."),
@@ -943,18 +951,18 @@ private fun SetRow(
     ) {
         Text(
             text = t("Set ${set.setNumber}", "Seria ${set.setNumber}"),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "${set.weight.clean()} kg x ${set.reps}",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
             )
-            IconButton(onClick = onEdit) {
+            IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
                 Icon(Icons.Outlined.Edit, contentDescription = t("Edit set"))
             }
-            IconButton(onClick = onDelete) {
+            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                 Icon(Icons.Outlined.Delete, contentDescription = t("Delete set"))
             }
         }

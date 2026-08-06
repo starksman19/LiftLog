@@ -4,6 +4,6 @@ data class WorkoutTemplate(
     val id: Long,
     val name: String,
     val exerciseCount: Int,
-    val planId: Long?,
-    val planName: String?,
+    val planIds: Set<Long>,
+    val planNames: List<String>,
 )

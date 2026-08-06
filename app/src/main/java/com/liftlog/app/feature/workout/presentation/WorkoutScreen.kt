@@ -195,12 +195,12 @@ private fun EmptyWorkoutScreen(
                 Text(t("Start workout", "Rozpocznij trening"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 OutlinedButton(onClick = { startDialogVisible = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(imageVector = Icons.Outlined.PlayArrow, contentDescription = null)
-                    Text(text = t("Start empty workout", "Rozpocznij pusty trening"), modifier = Modifier.padding(start = 8.dp))
+                    Text(text = t("Start from scratch", "Rozpocznij od zera"), modifier = Modifier.padding(start = 8.dp))
                 }
             }
         }
         item { Text(t("Ungrouped templates", "Wolne szablony"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
-        val ungroupedTemplates = templates.filter { it.planId == null }
+        val ungroupedTemplates = templates.filter { it.planIds.isEmpty() }
         if (ungroupedTemplates.isEmpty()) {
             item { Text(t("No ungrouped templates.", "Brak wolnych szablonow."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
@@ -213,7 +213,7 @@ private fun EmptyWorkoutScreen(
             item { Text(t("No training plans yet.", "Brak planow treningowych."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
             items(plans, key = { it.id }) { plan ->
-                val planTemplates = templates.filter { it.planId == plan.id }
+                val planTemplates = templates.filter { plan.id in it.planIds }
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(plan.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
@@ -229,7 +229,7 @@ private fun EmptyWorkoutScreen(
         item {
             OutlinedButton(onClick = onManageTemplates, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Outlined.BookmarkAdd, contentDescription = null)
-                Text(t("Manage templates"), modifier = Modifier.padding(start = 8.dp))
+                Text(t("Manage templates and plans", "Zarzadzaj szablonami i planami"), modifier = Modifier.padding(start = 8.dp))
             }
         }
     }

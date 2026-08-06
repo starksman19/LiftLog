@@ -17,6 +17,7 @@ import com.liftlog.app.core.database.entity.WorkoutSessionEntity
 import com.liftlog.app.core.database.entity.WorkoutPlanEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplatePlanEntity
 
 @Database(
     entities = [
@@ -27,10 +28,11 @@ import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
         SetEntryEntity::class,
         WorkoutTemplateEntity::class,
         WorkoutTemplateExerciseEntity::class,
+        WorkoutTemplatePlanEntity::class,
         WorkoutPlanEntity::class,
         GymLocationEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class LiftLogDatabase : RoomDatabase() {

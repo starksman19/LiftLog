@@ -30,24 +30,28 @@ class RoomWorkoutTemplateRepository @Inject constructor(
 
     override suspend fun getTemplateExerciseIds(templateId: Long): List<Long> = templateDao.getExerciseIds(templateId)
 
-    override suspend fun createTemplate(name: String, exerciseIds: List<Long>, planId: Long?) {
-        templateDao.createTemplate(name, exerciseIds, planId)
+    override suspend fun getTemplatePlanIds(templateId: Long): List<Long> = templateDao.getPlanIds(templateId)
+
+    override suspend fun getPlanTemplateIds(planId: Long): List<Long> = templateDao.getPlanTemplateIds(planId)
+
+    override suspend fun createTemplate(name: String, exerciseIds: List<Long>, planIds: List<Long>) {
+        templateDao.createTemplate(name, exerciseIds, planIds)
     }
 
-    override suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planId: Long?) {
-        templateDao.updateTemplate(templateId, name, exerciseIds, planId)
+    override suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planIds: List<Long>) {
+        templateDao.updateTemplate(templateId, name, exerciseIds, planIds)
     }
 
     override suspend fun deleteTemplate(templateId: Long) {
         templateDao.deleteTemplate(templateId)
     }
 
-    override suspend fun createPlan(name: String) {
-        templateDao.insertPlan(com.liftlog.app.core.database.entity.WorkoutPlanEntity(name = name, createdAtEpochMillis = System.currentTimeMillis()))
+    override suspend fun createPlan(name: String, templateIds: List<Long>) {
+        templateDao.createPlan(name, templateIds)
     }
 
-    override suspend fun updatePlan(planId: Long, name: String) {
-        templateDao.updatePlanName(planId, name)
+    override suspend fun updatePlan(planId: Long, name: String, templateIds: List<Long>) {
+        templateDao.updatePlan(planId, name, templateIds)
     }
 
     override suspend fun deletePlan(planId: Long) {
@@ -58,7 +62,7 @@ class RoomWorkoutTemplateRepository @Inject constructor(
         id = id,
         name = name,
         exerciseCount = exerciseCount,
-        planId = planId,
-        planName = planName,
+        planIds = planIds.orEmpty().split(',').mapNotNull(String::toLongOrNull).toSet(),
+        planNames = planNames.orEmpty().split(',').filter(String::isNotBlank),
     )
 }

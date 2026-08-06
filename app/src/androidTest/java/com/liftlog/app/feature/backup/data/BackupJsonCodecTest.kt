@@ -5,6 +5,7 @@ import com.liftlog.app.core.database.entity.ExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutPlanEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplatePlanEntity
 import com.liftlog.app.core.database.model.DatabaseSnapshot
 import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.feature.backup.domain.BackupSelection
@@ -82,8 +83,9 @@ class BackupJsonCodecTest {
                 workoutExercises = emptyList(),
                 setEntries = emptyList(),
                 workoutPlans = listOf(WorkoutPlanEntity(id = 9, name = "Upper body", createdAtEpochMillis = 2)),
-                workoutTemplates = listOf(WorkoutTemplateEntity(id = 3, name = "Leg day", createdAtEpochMillis = 2, planId = 9)),
+                workoutTemplates = listOf(WorkoutTemplateEntity(id = 3, name = "Leg day", createdAtEpochMillis = 2)),
                 workoutTemplateExercises = listOf(WorkoutTemplateExerciseEntity(id = 4, templateId = 3, exerciseId = 7, orderIndex = 0)),
+                workoutTemplatePlans = listOf(WorkoutTemplatePlanEntity(templateId = 3, planId = 9)),
             ),
             selection = BackupSelection(
                 settings = false,
@@ -100,7 +102,7 @@ class BackupJsonCodecTest {
         assertTrue(restored.selection.workoutTemplates)
         assertEquals("Leg day", restored.snapshot.workoutTemplates.single().name)
         assertEquals("Upper body", restored.snapshot.workoutPlans.single().name)
-        assertEquals(9L, restored.snapshot.workoutTemplates.single().planId)
+        assertEquals(9L, restored.snapshot.workoutTemplatePlans.single().planId)
         assertEquals(7L, restored.snapshot.workoutTemplateExercises.single().exerciseId)
     }
 

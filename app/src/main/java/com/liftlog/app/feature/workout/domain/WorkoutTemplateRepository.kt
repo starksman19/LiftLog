@@ -10,10 +10,12 @@ interface WorkoutTemplateRepository {
     suspend fun saveActiveWorkoutAsTemplate(name: String)
     suspend fun startTemplate(templateId: Long, gymLocation: String?)
     suspend fun getTemplateExerciseIds(templateId: Long): List<Long>
-    suspend fun createTemplate(name: String, exerciseIds: List<Long>, planId: Long?)
-    suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planId: Long?)
+    suspend fun getTemplatePlanIds(templateId: Long): List<Long>
+    suspend fun getPlanTemplateIds(planId: Long): List<Long>
+    suspend fun createTemplate(name: String, exerciseIds: List<Long>, planIds: List<Long>)
+    suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planIds: List<Long>)
     suspend fun deleteTemplate(templateId: Long)
-    suspend fun createPlan(name: String)
-    suspend fun updatePlan(planId: Long, name: String)
+    suspend fun createPlan(name: String, templateIds: List<Long>)
+    suspend fun updatePlan(planId: Long, name: String, templateIds: List<Long>)
     suspend fun deletePlan(planId: Long)
 }

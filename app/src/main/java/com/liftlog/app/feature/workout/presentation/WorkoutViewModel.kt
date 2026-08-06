@@ -8,6 +8,7 @@ import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.core.model.RecentExercisePerformance
 import com.liftlog.app.core.model.WorkoutTemplate
+import com.liftlog.app.core.model.WorkoutPlan
 import com.liftlog.app.feature.exercises.domain.AddCustomExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.EnsureStarterExercisesUseCase
 import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
@@ -20,6 +21,7 @@ import com.liftlog.app.feature.workout.domain.FinishWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.GetRecentExercisePerformancesUseCase
 import com.liftlog.app.feature.workout.domain.ObserveActiveWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.ObserveWorkoutTemplatesUseCase
+import com.liftlog.app.feature.workout.domain.ObserveWorkoutPlansUseCase
 import com.liftlog.app.feature.workout.domain.SaveActiveWorkoutAsTemplateUseCase
 import com.liftlog.app.feature.workout.domain.StartWorkoutUseCase
 import com.liftlog.app.feature.workout.domain.StartWorkoutTemplateUseCase
@@ -41,6 +43,7 @@ class WorkoutViewModel @Inject constructor(
     observeActiveWorkoutUseCase: ObserveActiveWorkoutUseCase,
     observeExercisesUseCase: ObserveExercisesUseCase,
     observeWorkoutTemplatesUseCase: ObserveWorkoutTemplatesUseCase,
+    observeWorkoutPlansUseCase: ObserveWorkoutPlansUseCase,
     private val ensureStarterExercisesUseCase: EnsureStarterExercisesUseCase,
     private val startWorkoutUseCase: StartWorkoutUseCase,
     private val addExerciseToActiveWorkoutUseCase: AddExerciseToActiveWorkoutUseCase,
@@ -64,9 +67,9 @@ class WorkoutViewModel @Inject constructor(
         observeActiveWorkoutUseCase(),
         observeExercisesUseCase(""),
         observeWorkoutTemplatesUseCase(),
+        observeWorkoutPlansUseCase(),
         gymLocationRepository.observeLocations(),
-        exerciseHistory,
-    ) { activeWorkout, exercises, templates, locations, history ->
+    ) { activeWorkout, exercises, templates, plans, locations ->
         WorkoutUiState(
             activeWorkout = activeWorkout,
             availableExercises = exercises
@@ -75,10 +78,11 @@ class WorkoutViewModel @Inject constructor(
                         exercise.gymLocation.equals(activeWorkout?.gymLocation, ignoreCase = true)
                 },
             templates = templates,
+            plans = plans,
             locations = locations,
-            exerciseHistory = history,
         )
     }
+        .combine(exerciseHistory) { state, history -> state.copy(exerciseHistory = history) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -192,6 +196,7 @@ data class WorkoutUiState(
     val activeWorkout: ActiveWorkout? = null,
     val availableExercises: List<Exercise> = emptyList(),
     val templates: List<WorkoutTemplate> = emptyList(),
+    val plans: List<WorkoutPlan> = emptyList(),
     val locations: List<String> = emptyList(),
     val exerciseHistory: ExerciseHistoryDialogState? = null,
 )

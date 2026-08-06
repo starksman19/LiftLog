@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.WorkoutTemplate
+import com.liftlog.app.core.model.WorkoutPlan
+import com.liftlog.app.feature.workout.domain.ObserveWorkoutPlansUseCase
 import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
 import com.liftlog.app.feature.workout.domain.ObserveWorkoutTemplatesUseCase
 import com.liftlog.app.feature.workout.domain.WorkoutTemplateRepository
@@ -18,33 +20,48 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class TemplateManagementViewModel @Inject constructor(
     observeWorkoutTemplatesUseCase: ObserveWorkoutTemplatesUseCase,
+    observeWorkoutPlansUseCase: ObserveWorkoutPlansUseCase,
     observeExercisesUseCase: ObserveExercisesUseCase,
     private val repository: WorkoutTemplateRepository,
 ) : ViewModel() {
     val uiState: StateFlow<TemplateManagementUiState> = combine(
         observeWorkoutTemplatesUseCase(),
+        observeWorkoutPlansUseCase(),
         observeExercisesUseCase(""),
-    ) { templates, exercises -> TemplateManagementUiState(templates, exercises) }
+    ) { templates, plans, exercises -> TemplateManagementUiState(templates, plans, exercises) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TemplateManagementUiState())
 
     fun loadExerciseIds(templateId: Long, onLoaded: (Set<Long>) -> Unit) {
         viewModelScope.launch { onLoaded(repository.getTemplateExerciseIds(templateId).toSet()) }
     }
 
-    fun save(templateId: Long?, name: String, exerciseIds: Set<Long>) {
+    fun save(templateId: Long?, name: String, exerciseIds: Set<Long>, planId: Long?) {
         if (name.isBlank() || exerciseIds.isEmpty()) return
         viewModelScope.launch {
-            if (templateId == null) repository.createTemplate(name.trim(), exerciseIds.toList())
-            else repository.updateTemplate(templateId, name.trim(), exerciseIds.toList())
+            if (templateId == null) repository.createTemplate(name.trim(), exerciseIds.toList(), planId)
+            else repository.updateTemplate(templateId, name.trim(), exerciseIds.toList(), planId)
         }
     }
 
     fun delete(templateId: Long) {
         viewModelScope.launch { repository.deleteTemplate(templateId) }
     }
+
+    fun savePlan(planId: Long?, name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            if (planId == null) repository.createPlan(name.trim())
+            else repository.updatePlan(planId, name.trim())
+        }
+    }
+
+    fun deletePlan(planId: Long) {
+        viewModelScope.launch { repository.deletePlan(planId) }
+    }
 }
 
 data class TemplateManagementUiState(
     val templates: List<WorkoutTemplate> = emptyList(),
+    val plans: List<WorkoutPlan> = emptyList(),
     val exercises: List<Exercise> = emptyList(),
 )

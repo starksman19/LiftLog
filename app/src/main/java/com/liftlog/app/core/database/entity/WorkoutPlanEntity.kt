@@ -5,13 +5,12 @@ import androidx.room3.Index
 import androidx.room3.PrimaryKey
 
 @Entity(
-    tableName = "workout_templates",
-    indices = [Index(value = ["planId"])],
+    tableName = "workout_plans",
+    indices = [Index(value = ["name"], unique = true)],
 )
-data class WorkoutTemplateEntity(
+data class WorkoutPlanEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val name: String,
     val createdAtEpochMillis: Long,
-    val planId: Long? = null,
 )

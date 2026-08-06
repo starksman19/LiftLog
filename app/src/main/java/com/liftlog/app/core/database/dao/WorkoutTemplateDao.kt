@@ -7,6 +7,7 @@ import androidx.room3.Query
 import androidx.room3.Transaction
 import com.liftlog.app.core.database.entity.WorkoutTemplateEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
+import com.liftlog.app.core.database.entity.WorkoutPlanEntity
 import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
 import com.liftlog.app.core.database.model.WorkoutTemplateRow
@@ -16,26 +17,43 @@ import kotlinx.coroutines.flow.Flow
 interface WorkoutTemplateDao {
     @Query(
         """
-        SELECT t.id AS id, t.name AS name, COUNT(te.id) AS exerciseCount
+        SELECT t.id AS id, t.name AS name, COUNT(te.id) AS exerciseCount,
+               p.id AS planId, p.name AS planName
         FROM workout_templates AS t
         LEFT JOIN workout_template_exercises AS te ON te.templateId = t.id
-        GROUP BY t.id
-        ORDER BY t.name COLLATE NOCASE
+        LEFT JOIN workout_plans AS p ON p.id = t.planId
+        GROUP BY t.id, p.id
+        ORDER BY p.name COLLATE NOCASE, t.name COLLATE NOCASE
         """,
     )
     fun observeTemplates(): Flow<List<WorkoutTemplateRow>>
 
+    @Query("SELECT * FROM workout_plans ORDER BY name COLLATE NOCASE")
+    fun observePlans(): Flow<List<WorkoutPlanEntity>>
+
     @Query("SELECT exerciseId FROM workout_template_exercises WHERE templateId = :templateId ORDER BY orderIndex")
     suspend fun getExerciseIds(templateId: Long): List<Long>
 
-    @Query("UPDATE workout_templates SET name = :name WHERE id = :templateId")
-    suspend fun updateTemplateName(templateId: Long, name: String)
+    @Query("UPDATE workout_templates SET name = :name, planId = :planId WHERE id = :templateId")
+    suspend fun updateTemplateDetails(templateId: Long, name: String, planId: Long?)
 
     @Query("DELETE FROM workout_template_exercises WHERE templateId = :templateId")
     suspend fun clearTemplateExercises(templateId: Long)
 
     @Query("DELETE FROM workout_templates WHERE id = :templateId")
     suspend fun deleteTemplate(templateId: Long)
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertPlan(plan: WorkoutPlanEntity): Long
+
+    @Query("UPDATE workout_plans SET name = :name WHERE id = :planId")
+    suspend fun updatePlanName(planId: Long, name: String)
+
+    @Query("UPDATE workout_templates SET planId = NULL WHERE planId = :planId")
+    suspend fun ungroupTemplates(planId: Long)
+
+    @Query("DELETE FROM workout_plans WHERE id = :planId")
+    suspend fun deletePlanRecord(planId: Long)
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertTemplate(template: WorkoutTemplateEntity): Long
@@ -56,8 +74,8 @@ interface WorkoutTemplateDao {
     suspend fun insertWorkoutExercises(exercises: List<WorkoutExerciseEntity>)
 
     @Transaction
-    suspend fun createTemplate(name: String, exerciseIds: List<Long>) {
-        val templateId = insertTemplate(WorkoutTemplateEntity(name = name, createdAtEpochMillis = System.currentTimeMillis()))
+    suspend fun createTemplate(name: String, exerciseIds: List<Long>, planId: Long? = null) {
+        val templateId = insertTemplate(WorkoutTemplateEntity(name = name, createdAtEpochMillis = System.currentTimeMillis(), planId = planId))
         insertTemplateExercises(
             exerciseIds.mapIndexed { index, exerciseId ->
                 WorkoutTemplateExerciseEntity(templateId = templateId, exerciseId = exerciseId, orderIndex = index)
@@ -66,14 +84,20 @@ interface WorkoutTemplateDao {
     }
 
     @Transaction
-    suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>) {
-        updateTemplateName(templateId, name)
+    suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planId: Long? = null) {
+        updateTemplateDetails(templateId, name, planId)
         clearTemplateExercises(templateId)
         insertTemplateExercises(
             exerciseIds.mapIndexed { index, exerciseId ->
                 WorkoutTemplateExerciseEntity(templateId = templateId, exerciseId = exerciseId, orderIndex = index)
             },
         )
+    }
+
+    @Transaction
+    suspend fun deletePlan(planId: Long) {
+        ungroupTemplates(planId)
+        deletePlanRecord(planId)
     }
 
     @Transaction

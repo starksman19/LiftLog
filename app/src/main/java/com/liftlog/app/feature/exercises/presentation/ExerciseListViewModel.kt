@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.ExerciseDraft
+import com.liftlog.app.core.util.PolishTextComparator
 import com.liftlog.app.feature.exercises.domain.EnsureStarterExercisesUseCase
 import com.liftlog.app.feature.exercises.domain.AddCustomExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.DeleteExerciseUseCase
@@ -90,7 +91,11 @@ data class ExerciseListUiState(
 )
 
 enum class ExerciseSortMode(val comparator: Comparator<Exercise>) {
-    NameAscending(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }),
-    NameDescending(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name }),
-    Category(compareBy<Exercise> { it.category.name }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.name }),
+    NameAscending(Comparator { first, second -> PolishTextComparator.compare(first.name, second.name) }),
+    NameDescending(Comparator { first, second -> PolishTextComparator.compare(second.name, first.name) }),
+    Category(Comparator { first, second ->
+        first.category.name.compareTo(second.category.name)
+            .takeUnless { it == 0 }
+            ?: PolishTextComparator.compare(first.name, second.name)
+    }),
 }

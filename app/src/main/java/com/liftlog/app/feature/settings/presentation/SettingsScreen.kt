@@ -27,7 +27,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -59,7 +58,6 @@ fun SettingsRoute(
         state = state,
         onWeightUnitChanged = viewModel::setWeightUnit,
         onLanguageChanged = viewModel::setLanguage,
-        onDefaultRestChanged = viewModel::setDefaultRestSeconds,
         onExport = viewModel::exportTo,
         onExportTrainingReport = viewModel::exportTrainingReportTo,
         onInspectImport = viewModel::inspectImport,
@@ -77,7 +75,6 @@ fun SettingsScreen(
     state: SettingsUiState,
     onWeightUnitChanged: (WeightUnit) -> Unit,
     onLanguageChanged: (AppLanguage) -> Unit,
-    onDefaultRestChanged: (Int) -> Unit,
     onExport: (android.net.Uri, BackupSelection) -> Unit,
     onExportTrainingReport: (android.net.Uri, LocalDate, LocalDate) -> Unit,
     onInspectImport: (android.net.Uri) -> Unit,
@@ -169,20 +166,6 @@ fun SettingsScreen(
                             )
                         }
                     }
-                }
-            }
-            item {
-                SettingsSection(title = t("Default rest")) {
-                    Text(
-                        text = t("${state.settings.defaultRestSeconds} seconds", "${state.settings.defaultRestSeconds} sekund"),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Slider(
-                        value = state.settings.defaultRestSeconds.toFloat(),
-                        onValueChange = { onDefaultRestChanged(it.toInt()) },
-                        valueRange = 0f..300f,
-                    )
                 }
             }
             if (state.locations.isNotEmpty()) {

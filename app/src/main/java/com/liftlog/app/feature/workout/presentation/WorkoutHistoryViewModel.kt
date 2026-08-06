@@ -3,6 +3,7 @@ package com.liftlog.app.feature.workout.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liftlog.app.core.model.WorkoutSummary
+import com.liftlog.app.core.util.PolishTextComparator
 import com.liftlog.app.feature.workout.domain.ObserveCompletedWorkoutsUseCase
 import com.liftlog.app.feature.workout.domain.DeleteCompletedWorkoutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +32,7 @@ class WorkoutHistoryViewModel @Inject constructor(
         dateFilter,
         sortMode,
     ) { workouts, query, selectedGym, dateQuery, currentSortMode ->
-        val gyms = workouts.mapNotNull { it.gymLocation }.distinct().sorted()
+        val gyms = workouts.mapNotNull { it.gymLocation }.distinct().sortedWith(PolishTextComparator)
         WorkoutHistoryUiState(
             searchQuery = query,
             selectedGym = selectedGym,
@@ -87,6 +88,9 @@ data class WorkoutHistoryUiState(
 enum class WorkoutSortMode(val comparator: Comparator<WorkoutSummary>) {
     NewestFirst(compareByDescending { it.finishedAtEpochMillis }),
     OldestFirst(compareBy { it.finishedAtEpochMillis }),
-    Location(compareBy<WorkoutSummary, String>(String.CASE_INSENSITIVE_ORDER) { it.gymLocation.orEmpty() }
-        .thenByDescending { it.finishedAtEpochMillis }),
+    Location(Comparator { first, second ->
+        PolishTextComparator.compare(first.gymLocation.orEmpty(), second.gymLocation.orEmpty())
+            .takeUnless { it == 0 }
+            ?: second.finishedAtEpochMillis.compareTo(first.finishedAtEpochMillis)
+    }),
 }

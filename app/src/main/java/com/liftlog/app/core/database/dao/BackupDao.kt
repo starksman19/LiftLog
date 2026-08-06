@@ -199,6 +199,8 @@ interface BackupDao {
             importedToLocalExerciseIds[exercise.id] = localId
         }
 
+        if (snapshot.workoutTemplates.isNotEmpty()) insertWorkoutTemplates(snapshot, importedToLocalExerciseIds)
+
         if (!replaceWorkoutData) return
 
         clearSetEntries()
@@ -215,7 +217,6 @@ interface BackupDao {
             )
         }
         if (snapshot.setEntries.isNotEmpty()) insertSetEntries(snapshot.setEntries)
-        if (snapshot.workoutTemplates.isNotEmpty()) insertWorkoutTemplates(snapshot, importedToLocalExerciseIds)
     }
 
     private suspend fun insertWorkoutTemplates(

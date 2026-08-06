@@ -15,6 +15,53 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class BackupJsonCodecTest {
     @Test
+    fun roundTripPreservesExercisePhotoAndCurrentExerciseFields() {
+        val imageUri = "data:image/jpeg;base64,AAECAwQ="
+        val selection = BackupSelection(
+            settings = false,
+            locations = false,
+            exercises = true,
+            workoutSessions = false,
+            workoutExercises = false,
+            setEntries = false,
+            workoutTemplates = false,
+        )
+        val backup = LiftLogBackup(
+            exportedAtEpochMillis = 1_000L,
+            settings = null,
+            selection = selection,
+            snapshot = DatabaseSnapshot(
+                exercises = listOf(
+                    ExerciseEntity(
+                        id = 10L,
+                        name = "Maszyna na plecy",
+                        primaryMuscle = "Plecy",
+                        equipment = "Wioslowanie",
+                        category = ExerciseCategory.Machine.name,
+                        gymLocation = "Siłownia A",
+                        youTubeUrl = "https://www.youtube.com/watch?v=example",
+                        imageUri = imageUri,
+                        isCustom = true,
+                        createdAtEpochMillis = 999L,
+                    ),
+                ),
+                workoutSessions = emptyList(),
+                workoutExercises = emptyList(),
+                setEntries = emptyList(),
+                workoutTemplates = emptyList(),
+                workoutTemplateExercises = emptyList(),
+            ),
+        )
+
+        val restored = BackupJsonCodec.decode(BackupJsonCodec.encode(backup))
+
+        assertEquals(imageUri, restored.snapshot.exercises.single().imageUri)
+        assertEquals(ExerciseCategory.Machine.name, restored.snapshot.exercises.single().category)
+        assertEquals("Siłownia A", restored.snapshot.exercises.single().gymLocation)
+        assertEquals("https://www.youtube.com/watch?v=example", restored.snapshot.exercises.single().youTubeUrl)
+    }
+
+    @Test
     fun backupKeepsTemplatesAndTheirExerciseReferences() {
         val exercise = ExerciseEntity(
             id = 7,

@@ -1,6 +1,7 @@
 package com.liftlog.app.feature.workout.presentation
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -31,6 +32,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -170,13 +172,14 @@ private fun EmptyWorkoutScreen(
 ) {
     var startDialogVisible by remember { mutableStateOf(false) }
     var templatePendingStart by remember { mutableStateOf<WorkoutTemplate?>(null) }
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 20.dp),
-        contentPadding = PaddingValues(top = 20.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(top = 20.dp, bottom = 112.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -218,12 +221,6 @@ private fun EmptyWorkoutScreen(
             }
         }
         item {
-            OutlinedButton(onClick = onManageTemplates, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.BookmarkAdd, contentDescription = null)
-                Text(t("Manage templates and plans", "Zarzadzaj szablonami i planami"), modifier = Modifier.padding(start = 8.dp))
-            }
-        }
-        item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Text(t("Start workout", "Rozpocznij trening"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 OutlinedButton(onClick = { startDialogVisible = true }, modifier = Modifier.fillMaxWidth()) {
@@ -232,6 +229,15 @@ private fun EmptyWorkoutScreen(
                 }
             }
         }
+        }
+        ExtendedFloatingActionButton(
+            onClick = onManageTemplates,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(20.dp),
+            icon = { Icon(Icons.Outlined.BookmarkAdd, contentDescription = null) },
+            text = { Text(t("Manage templates and plans", "Zarzadzaj szablonami i planami")) },
+        )
     }
 
     if (startDialogVisible) {

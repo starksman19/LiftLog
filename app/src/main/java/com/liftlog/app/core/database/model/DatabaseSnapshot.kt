@@ -5,8 +5,10 @@ import com.liftlog.app.core.database.entity.GymLocationEntity
 import com.liftlog.app.core.database.entity.SetEntryEntity
 import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
+import com.liftlog.app.core.database.entity.WorkoutPlanEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplatePlanEntity
 
 data class DatabaseSnapshot(
     val exercises: List<ExerciseEntity>,
@@ -16,4 +18,6 @@ data class DatabaseSnapshot(
     val workoutTemplates: List<WorkoutTemplateEntity>,
     val workoutTemplateExercises: List<WorkoutTemplateExerciseEntity>,
     val gymLocations: List<GymLocationEntity> = emptyList(),
+    val workoutPlans: List<WorkoutPlanEntity> = emptyList(),
+    val workoutTemplatePlans: List<WorkoutTemplatePlanEntity> = emptyList(),
 )

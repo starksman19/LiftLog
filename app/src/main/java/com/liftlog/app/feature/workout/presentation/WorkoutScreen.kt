@@ -121,6 +121,7 @@ fun WorkoutScreen(
         EmptyWorkoutScreen(
             onStartWorkout = onStartWorkout,
             templates = state.templates,
+            plans = state.plans,
             locations = state.locations,
             onStartTemplate = onStartTemplate,
             onHistory = onHistory,
@@ -160,6 +161,7 @@ fun WorkoutScreen(
 private fun EmptyWorkoutScreen(
     onStartWorkout: (String?) -> Unit,
     templates: List<WorkoutTemplate>,
+    plans: List<com.liftlog.app.core.model.WorkoutPlan>,
     locations: List<String>,
     onStartTemplate: (Long, String?) -> Unit,
     onHistory: () -> Unit,
@@ -168,54 +170,67 @@ private fun EmptyWorkoutScreen(
 ) {
     var startDialogVisible by remember { mutableStateOf(false) }
     var templatePendingStart by remember { mutableStateOf<WorkoutTemplate?>(null) }
-    Column(
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+            .padding(horizontal = 20.dp),
+        contentPadding = PaddingValues(top = 20.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = t("Workout"),
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onHistory) {
                 Icon(Icons.Outlined.History, contentDescription = t("Workout history"))
             }
+            }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { startDialogVisible = true }) {
-            Icon(
-                imageVector = Icons.Outlined.PlayArrow,
-                contentDescription = null,
-            )
-            Text(
-                text = t("Start workout"),
-                modifier = Modifier.padding(start = 8.dp),
-            )
-        }
-        if (templates.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = t("Templates"),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            templates.forEach { template ->
-                OutlinedButton(onClick = { templatePendingStart = template }) {
-                    Icon(Icons.AutoMirrored.Outlined.PlaylistPlay, contentDescription = null)
-                    Text(
-                        text = "${template.name} (${template.exerciseCount})",
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
+        item { Text(t("Training plans", "Plany treningowe"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp)) }
+        if (plans.isEmpty()) {
+            item { Text(t("No training plans yet.", "Brak planow treningowych."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else {
+            items(plans, key = { plan -> "plan-${plan.id}" }) { plan ->
+                val planTemplates = templates.filter { plan.id in it.planIds }
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(plan.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        if (planTemplates.isEmpty()) {
+                            Text(t("No templates in this plan.", "Brak szablonow w tym planie."), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            planTemplates.forEach { template -> TemplateStartButton(template, onClick = { templatePendingStart = template }) }
+                        }
+                    }
                 }
             }
         }
-        OutlinedButton(onClick = onManageTemplates) {
-            Icon(Icons.Outlined.BookmarkAdd, contentDescription = null)
-            Text(t("Manage templates"), modifier = Modifier.padding(start = 8.dp))
+        item { Text(t("Ungrouped templates", "Wolne szablony"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+        val ungroupedTemplates = templates.filter { it.planIds.isEmpty() }
+        if (ungroupedTemplates.isEmpty()) {
+            item { Text(t("No ungrouped templates.", "Brak wolnych szablonow."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else {
+            items(ungroupedTemplates, key = { template -> "template-${template.id}" }) { template ->
+                TemplateStartButton(template, onClick = { templatePendingStart = template })
+            }
+        }
+        item {
+            OutlinedButton(onClick = onManageTemplates, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.BookmarkAdd, contentDescription = null)
+                Text(t("Manage templates and plans", "Zarzadzaj szablonami i planami"), modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
+                Text(t("Start workout", "Rozpocznij trening"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                OutlinedButton(onClick = { startDialogVisible = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(imageVector = Icons.Outlined.PlayArrow, contentDescription = null)
+                    Text(text = t("Start from scratch", "Rozpocznij od zera"), modifier = Modifier.padding(start = 8.dp))
+                }
+            }
         }
     }
 
@@ -240,6 +255,14 @@ private fun EmptyWorkoutScreen(
                 templatePendingStart = null
             },
         )
+    }
+}
+
+@Composable
+private fun TemplateStartButton(template: WorkoutTemplate, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Icon(Icons.AutoMirrored.Outlined.PlaylistPlay, contentDescription = null)
+        Text(text = "${template.name} (${template.exerciseCount})", modifier = Modifier.padding(start = 8.dp), maxLines = 1)
     }
 }
 

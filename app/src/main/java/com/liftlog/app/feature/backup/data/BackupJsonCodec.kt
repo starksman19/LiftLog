@@ -7,6 +7,8 @@ import com.liftlog.app.core.database.entity.WorkoutExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
+import com.liftlog.app.core.database.entity.WorkoutPlanEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplatePlanEntity
 import com.liftlog.app.core.database.model.DatabaseSnapshot
 import com.liftlog.app.core.model.AppSettings
 import com.liftlog.app.core.model.ExerciseCategory
@@ -17,7 +19,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal object BackupJsonCodec {
-    private const val FormatVersion = 4
+    private const val FormatVersion = 6
 
     fun encode(backup: LiftLogBackup): String = JSONObject().apply {
         put("formatVersion", FormatVersion)
@@ -82,11 +84,24 @@ internal object BackupJsonCodec {
                     put("completedAtEpochMillis", set.completedAtEpochMillis)
                 }
             })
+            if (backup.selection.workoutTemplates) put("workoutPlans", backup.snapshot.workoutPlans.toJsonArray { plan ->
+                JSONObject().apply {
+                    put("id", plan.id)
+                    put("name", plan.name)
+                    put("createdAtEpochMillis", plan.createdAtEpochMillis)
+                }
+            })
             if (backup.selection.workoutTemplates) put("workoutTemplates", backup.snapshot.workoutTemplates.toJsonArray { template ->
                 JSONObject().apply {
                     put("id", template.id)
                     put("name", template.name)
                     put("createdAtEpochMillis", template.createdAtEpochMillis)
+                }
+            })
+            if (backup.selection.workoutTemplates) put("workoutTemplatePlans", backup.snapshot.workoutTemplatePlans.toJsonArray { link ->
+                JSONObject().apply {
+                    put("templateId", link.templateId)
+                    put("planId", link.planId)
                 }
             })
             if (backup.selection.workoutTemplates) put("workoutTemplateExercises", backup.snapshot.workoutTemplateExercises.toJsonArray { templateExercise ->
@@ -179,11 +194,19 @@ internal object BackupJsonCodec {
                     completedAtEpochMillis = item.getLong("completedAtEpochMillis"),
                 )
             },
+            workoutPlans = database.arrayFor("workoutPlans", selection.workoutTemplates && formatVersion >= 5).mapJson { item ->
+                WorkoutPlanEntity(
+                    id = item.positiveLong("id"),
+                    name = item.nonBlankString("name"),
+                    createdAtEpochMillis = item.getLong("createdAtEpochMillis"),
+                )
+            },
             workoutTemplates = database.arrayFor("workoutTemplates", selection.workoutTemplates).mapJson { item ->
                 WorkoutTemplateEntity(
                     id = item.positiveLong("id"),
                     name = item.nonBlankString("name"),
                     createdAtEpochMillis = item.getLong("createdAtEpochMillis"),
+                    planId = if (formatVersion >= 5) item.optionalLong("planId") else null,
                 )
             },
             workoutTemplateExercises = database.arrayFor("workoutTemplateExercises", selection.workoutTemplates).mapJson { item ->
@@ -193,6 +216,20 @@ internal object BackupJsonCodec {
                     exerciseId = item.positiveLong("exerciseId"),
                     orderIndex = item.getInt("orderIndex").also { require(it >= 0) },
                 )
+            },
+            workoutTemplatePlans = if (formatVersion >= 6) {
+                database.arrayFor("workoutTemplatePlans", selection.workoutTemplates).mapJson { item ->
+                    WorkoutTemplatePlanEntity(
+                        templateId = item.positiveLong("templateId"),
+                        planId = item.positiveLong("planId"),
+                    )
+                }
+            } else {
+                database.arrayFor("workoutTemplates", selection.workoutTemplates).mapJson { item ->
+                    item.optionalLong("planId")?.let { planId ->
+                        WorkoutTemplatePlanEntity(item.positiveLong("id"), planId)
+                    }
+                }.filterNotNull()
             },
         )
         snapshot.validateRelations()
@@ -264,6 +301,7 @@ internal object BackupJsonCodec {
         val sessionIds = workoutSessions.map { it.id }.toSet()
         val workoutExerciseIds = workoutExercises.map { it.id }.toSet()
         val templateIds = workoutTemplates.map { it.id }.toSet()
+        val planIds = workoutPlans.map { it.id }.toSet()
         require(exerciseIds.size == exercises.size) { "Exercise IDs must be unique." }
         require(sessionIds.size == workoutSessions.size) { "Workout IDs must be unique." }
         require(workoutExerciseIds.size == workoutExercises.size) { "Workout exercise IDs must be unique." }
@@ -275,6 +313,10 @@ internal object BackupJsonCodec {
         }
         require(setEntries.map { it.id }.toSet().size == setEntries.size) { "Set IDs must be unique." }
         require(templateIds.size == workoutTemplates.size) { "Template IDs must be unique." }
+        require(planIds.size == workoutPlans.size) { "Workout plan IDs must be unique." }
+        require(workoutTemplatePlans.all { it.templateId in templateIds && it.planId in planIds }) {
+            "A template plan points to missing data."
+        }
         require(workoutTemplateExercises.all { it.templateId in templateIds && it.exerciseId in exerciseIds }) {
             "A template exercise points to missing data."
         }

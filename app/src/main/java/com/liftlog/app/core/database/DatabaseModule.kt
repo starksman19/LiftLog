@@ -31,6 +31,8 @@ object DatabaseModule {
         .setDriver(BundledSQLiteDriver())
         .addMigrations(DatabaseMigrations.Migration2To3)
         .addMigrations(DatabaseMigrations.Migration3To4)
+        .addMigrations(DatabaseMigrations.Migration4To5)
+        .addMigrations(DatabaseMigrations.Migration5To6)
         .build()
 
     @Provides

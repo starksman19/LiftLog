@@ -44,4 +44,27 @@ object DatabaseMigrations {
             )
         }
     }
+
+    val Migration4To5 = object : Migration(4, 5) {
+        override suspend fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "CREATE TABLE IF NOT EXISTS workout_plans (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, createdAtEpochMillis INTEGER NOT NULL)",
+            )
+            connection.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_workout_plans_name ON workout_plans(name)")
+            connection.execSQL("ALTER TABLE workout_templates ADD COLUMN planId INTEGER")
+            connection.execSQL("CREATE INDEX IF NOT EXISTS index_workout_templates_planId ON workout_templates(planId)")
+        }
+    }
+
+    val Migration5To6 = object : Migration(5, 6) {
+        override suspend fun migrate(connection: SQLiteConnection) {
+            connection.execSQL(
+                "CREATE TABLE IF NOT EXISTS workout_template_plans (templateId INTEGER NOT NULL, planId INTEGER NOT NULL, PRIMARY KEY(templateId, planId))",
+            )
+            connection.execSQL("CREATE INDEX IF NOT EXISTS index_workout_template_plans_planId ON workout_template_plans(planId)")
+            connection.execSQL(
+                "INSERT OR IGNORE INTO workout_template_plans (templateId, planId) SELECT id, planId FROM workout_templates WHERE planId IS NOT NULL",
+            )
+        }
+    }
 }

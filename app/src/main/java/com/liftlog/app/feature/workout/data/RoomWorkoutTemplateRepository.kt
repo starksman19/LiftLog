@@ -38,7 +38,7 @@ class RoomWorkoutTemplateRepository @Inject constructor(
         templateDao.createTemplate(name, exerciseIds, planIds)
     }
 
-    override suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planIds: List<Long>) {
+    override suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planIds: List<Long>?) {
         templateDao.updateTemplate(templateId, name, exerciseIds, planIds)
     }
 

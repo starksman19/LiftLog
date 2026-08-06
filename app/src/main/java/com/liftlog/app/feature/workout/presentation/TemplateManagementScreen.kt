@@ -56,7 +56,6 @@ fun TemplateManagementRoute(
         state = state,
         onBack = onBack,
         onLoadExerciseIds = viewModel::loadExerciseIds,
-        onLoadTemplatePlanIds = viewModel::loadTemplatePlanIds,
         onLoadPlanTemplateIds = viewModel::loadPlanTemplateIds,
         onSaveTemplate = viewModel::save,
         onDeleteTemplate = viewModel::delete,
@@ -70,9 +69,8 @@ fun TemplateManagementScreen(
     state: TemplateManagementUiState,
     onBack: () -> Unit,
     onLoadExerciseIds: (Long, (Set<Long>) -> Unit) -> Unit,
-    onLoadTemplatePlanIds: (Long, (Set<Long>) -> Unit) -> Unit,
     onLoadPlanTemplateIds: (Long, (Set<Long>) -> Unit) -> Unit,
-    onSaveTemplate: (Long?, String, Set<Long>, Set<Long>) -> Unit,
+    onSaveTemplate: (Long?, String, Set<Long>) -> Unit,
     onDeleteTemplate: (Long) -> Unit,
     onSavePlan: (Long?, String, Set<Long>) -> Unit,
     onDeletePlan: (Long) -> Unit,
@@ -116,7 +114,7 @@ fun TemplateManagementScreen(
             if (state.plans.isEmpty()) {
                 item { Text(t("No training plans yet.", "Brak planow treningowych."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             } else {
-                items(state.plans, key = { it.id }) { plan ->
+                items(state.plans, key = { plan -> "plan-${plan.id}" }) { plan ->
                     PlanRow(plan, state.templates.count { plan.id in it.planIds }, onEdit = { editedPlan = plan }, onDelete = { planPendingDeletion = plan })
                 }
             }
@@ -125,7 +123,7 @@ fun TemplateManagementScreen(
             if (state.templates.isEmpty()) {
                 item { Text(t("Add a template to reuse an exercise list.", "Dodaj szablon, aby ponownie wykorzystywac liste cwiczen.")) }
             } else {
-                items(state.templates, key = { it.id }) { template ->
+                items(state.templates, key = { template -> "template-${template.id}" }) { template ->
                     TemplateRow(template, onEdit = { editedTemplate = template }, onDelete = { templatePendingDeletion = template })
                 }
             }
@@ -134,14 +132,14 @@ fun TemplateManagementScreen(
 
     if (createTemplateVisible) {
         TemplateEditorDialog(
-            title = t("New template", "Nowy szablon"), initialName = "", initialExerciseIds = emptySet(), initialPlanIds = emptySet(),
-            exercises = state.exercises, plans = state.plans, onDismiss = { createTemplateVisible = false },
-            onSave = { name, exerciseIds, planIds -> onSaveTemplate(null, name, exerciseIds, planIds); createTemplateVisible = false },
+            title = t("New template", "Nowy szablon"), initialName = "", initialExerciseIds = emptySet(),
+            exercises = state.exercises, onDismiss = { createTemplateVisible = false },
+            onSave = { name, exerciseIds -> onSaveTemplate(null, name, exerciseIds); createTemplateVisible = false },
         )
     }
     editedTemplate?.let { template ->
-        TemplateEditorLoader(template, state.exercises, state.plans, onLoadExerciseIds, onLoadTemplatePlanIds, { editedTemplate = null }) { name, exerciseIds, planIds ->
-            onSaveTemplate(template.id, name, exerciseIds, planIds)
+        TemplateEditorLoader(template, state.exercises, onLoadExerciseIds, { editedTemplate = null }) { name, exerciseIds ->
+            onSaveTemplate(template.id, name, exerciseIds)
             editedTemplate = null
         }
     }
@@ -201,45 +199,35 @@ private fun TemplateRow(template: WorkoutTemplate, onEdit: () -> Unit, onDelete:
 
 @Composable
 private fun TemplateEditorLoader(
-    template: WorkoutTemplate, exercises: List<Exercise>, plans: List<WorkoutPlan>,
+    template: WorkoutTemplate, exercises: List<Exercise>,
     onLoadExerciseIds: (Long, (Set<Long>) -> Unit) -> Unit,
-    onLoadPlanIds: (Long, (Set<Long>) -> Unit) -> Unit,
     onDismiss: () -> Unit,
-    onSave: (String, Set<Long>, Set<Long>) -> Unit,
+    onSave: (String, Set<Long>) -> Unit,
 ) {
     var exerciseIds by remember { mutableStateOf<Set<Long>?>(null) }
-    var planIds by remember { mutableStateOf<Set<Long>?>(null) }
     LaunchedEffect(template.id) {
         onLoadExerciseIds(template.id) { exerciseIds = it }
-        onLoadPlanIds(template.id) { planIds = it }
     }
-    if (exerciseIds != null && planIds != null) {
-        TemplateEditorDialog(t("Edit template", "Edytuj szablon"), template.name, exerciseIds!!, planIds!!, exercises, plans, onDismiss, onSave)
-    }
+    exerciseIds?.let { TemplateEditorDialog(t("Edit template", "Edytuj szablon"), template.name, it, exercises, onDismiss, onSave) }
 }
 
 @Composable
 private fun TemplateEditorDialog(
-    title: String, initialName: String, initialExerciseIds: Set<Long>, initialPlanIds: Set<Long>, exercises: List<Exercise>, plans: List<WorkoutPlan>,
-    onDismiss: () -> Unit, onSave: (String, Set<Long>, Set<Long>) -> Unit,
+    title: String, initialName: String, initialExerciseIds: Set<Long>, exercises: List<Exercise>,
+    onDismiss: () -> Unit, onSave: (String, Set<Long>) -> Unit,
 ) {
     var name by remember { mutableStateOf(initialName) }
     var selectedExerciseIds by remember { mutableStateOf(initialExerciseIds) }
-    var selectedPlanIds by remember { mutableStateOf(initialPlanIds) }
     AlertDialog(
         onDismissRequest = onDismiss, title = { Text(title) },
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 440.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(t("Template name", "Nazwa szablonu")) }, singleLine = true)
-                Text(t("Training plans", "Plany treningowe"), style = MaterialTheme.typography.labelLarge)
-                if (plans.isEmpty()) Text(t("Create a plan later to group this template.", "Utworz plan pozniej, aby pogrupowac ten szablon."), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                plans.forEach { plan -> SelectionRow(plan.name, plan.id in selectedPlanIds) { checked -> selectedPlanIds = if (checked) selectedPlanIds + plan.id else selectedPlanIds - plan.id } }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 Text(t("Exercises", "Cwiczenia"), style = MaterialTheme.typography.labelLarge)
                 exercises.forEach { exercise -> SelectionRow(exercise.name, exercise.id in selectedExerciseIds) { checked -> selectedExerciseIds = if (checked) selectedExerciseIds + exercise.id else selectedExerciseIds - exercise.id } }
             }
         },
-        confirmButton = { TextButton(onClick = { onSave(name.trim(), selectedExerciseIds, selectedPlanIds) }, enabled = name.isNotBlank() && selectedExerciseIds.isNotEmpty()) { Text(t("Save")) } },
+        confirmButton = { TextButton(onClick = { onSave(name.trim(), selectedExerciseIds) }, enabled = name.isNotBlank() && selectedExerciseIds.isNotEmpty()) { Text(t("Save")) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }

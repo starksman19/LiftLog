@@ -35,19 +35,15 @@ class TemplateManagementViewModel @Inject constructor(
         viewModelScope.launch { onLoaded(repository.getTemplateExerciseIds(templateId).toSet()) }
     }
 
-    fun loadTemplatePlanIds(templateId: Long, onLoaded: (Set<Long>) -> Unit) {
-        viewModelScope.launch { onLoaded(repository.getTemplatePlanIds(templateId).toSet()) }
-    }
-
     fun loadPlanTemplateIds(planId: Long, onLoaded: (Set<Long>) -> Unit) {
         viewModelScope.launch { onLoaded(repository.getPlanTemplateIds(planId).toSet()) }
     }
 
-    fun save(templateId: Long?, name: String, exerciseIds: Set<Long>, planIds: Set<Long>) {
+    fun save(templateId: Long?, name: String, exerciseIds: Set<Long>) {
         if (name.isBlank() || exerciseIds.isEmpty()) return
         viewModelScope.launch {
-            if (templateId == null) repository.createTemplate(name.trim(), exerciseIds.toList(), planIds.toList())
-            else repository.updateTemplate(templateId, name.trim(), exerciseIds.toList(), planIds.toList())
+            if (templateId == null) repository.createTemplate(name.trim(), exerciseIds.toList(), emptyList())
+            else repository.updateTemplate(templateId, name.trim(), exerciseIds.toList())
         }
     }
 

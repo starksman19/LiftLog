@@ -100,16 +100,18 @@ interface WorkoutTemplateDao {
     }
 
     @Transaction
-    suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planIds: List<Long> = emptyList()) {
+    suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planIds: List<Long>? = null) {
         updateTemplateName(templateId, name)
         clearTemplateExercises(templateId)
-        clearTemplatePlans(templateId)
         insertTemplateExercises(
             exerciseIds.mapIndexed { index, exerciseId ->
                 WorkoutTemplateExerciseEntity(templateId = templateId, exerciseId = exerciseId, orderIndex = index)
             },
         )
-        insertTemplatePlans(planIds.distinct().map { planId -> WorkoutTemplatePlanEntity(templateId, planId) })
+        if (planIds != null) {
+            clearTemplatePlans(templateId)
+            insertTemplatePlans(planIds.distinct().map { planId -> WorkoutTemplatePlanEntity(templateId, planId) })
+        }
     }
 
     @Transaction

@@ -13,7 +13,7 @@ interface WorkoutTemplateRepository {
     suspend fun getTemplatePlanIds(templateId: Long): List<Long>
     suspend fun getPlanTemplateIds(planId: Long): List<Long>
     suspend fun createTemplate(name: String, exerciseIds: List<Long>, planIds: List<Long>)
-    suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planIds: List<Long>)
+    suspend fun updateTemplate(templateId: Long, name: String, exerciseIds: List<Long>, planIds: List<Long>? = null)
     suspend fun deleteTemplate(templateId: Long)
     suspend fun createPlan(name: String, templateIds: List<Long>)
     suspend fun updatePlan(planId: Long, name: String, templateIds: List<Long>)

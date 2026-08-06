@@ -204,7 +204,7 @@ private fun EmptyWorkoutScreen(
         if (ungroupedTemplates.isEmpty()) {
             item { Text(t("No ungrouped templates.", "Brak wolnych szablonow."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
-            items(ungroupedTemplates, key = { it.id }) { template ->
+            items(ungroupedTemplates, key = { template -> "template-${template.id}" }) { template ->
                 TemplateStartButton(template, onClick = { templatePendingStart = template })
             }
         }
@@ -212,7 +212,7 @@ private fun EmptyWorkoutScreen(
         if (plans.isEmpty()) {
             item { Text(t("No training plans yet.", "Brak planow treningowych."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
-            items(plans, key = { it.id }) { plan ->
+            items(plans, key = { plan -> "plan-${plan.id}" }) { plan ->
                 val planTemplates = templates.filter { plan.id in it.planIds }
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

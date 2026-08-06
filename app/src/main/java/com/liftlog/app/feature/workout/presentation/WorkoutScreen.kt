@@ -190,24 +190,6 @@ private fun EmptyWorkoutScreen(
             }
             }
         }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(t("Start workout", "Rozpocznij trening"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                OutlinedButton(onClick = { startDialogVisible = true }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(imageVector = Icons.Outlined.PlayArrow, contentDescription = null)
-                    Text(text = t("Start from scratch", "Rozpocznij od zera"), modifier = Modifier.padding(start = 8.dp))
-                }
-            }
-        }
-        item { Text(t("Ungrouped templates", "Wolne szablony"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
-        val ungroupedTemplates = templates.filter { it.planIds.isEmpty() }
-        if (ungroupedTemplates.isEmpty()) {
-            item { Text(t("No ungrouped templates.", "Brak wolnych szablonow."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        } else {
-            items(ungroupedTemplates, key = { template -> "template-${template.id}" }) { template ->
-                TemplateStartButton(template, onClick = { templatePendingStart = template })
-            }
-        }
         item { Text(t("Training plans", "Plany treningowe"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 4.dp)) }
         if (plans.isEmpty()) {
             item { Text(t("No training plans yet.", "Brak planow treningowych."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -226,10 +208,28 @@ private fun EmptyWorkoutScreen(
                 }
             }
         }
+        item { Text(t("Ungrouped templates", "Wolne szablony"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+        val ungroupedTemplates = templates.filter { it.planIds.isEmpty() }
+        if (ungroupedTemplates.isEmpty()) {
+            item { Text(t("No ungrouped templates.", "Brak wolnych szablonow."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        } else {
+            items(ungroupedTemplates, key = { template -> "template-${template.id}" }) { template ->
+                TemplateStartButton(template, onClick = { templatePendingStart = template })
+            }
+        }
         item {
             OutlinedButton(onClick = onManageTemplates, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Outlined.BookmarkAdd, contentDescription = null)
                 Text(t("Manage templates and plans", "Zarzadzaj szablonami i planami"), modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
+                Text(t("Start workout", "Rozpocznij trening"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                OutlinedButton(onClick = { startDialogVisible = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(imageVector = Icons.Outlined.PlayArrow, contentDescription = null)
+                    Text(text = t("Start from scratch", "Rozpocznij od zera"), modifier = Modifier.padding(start = 8.dp))
+                }
             }
         }
     }

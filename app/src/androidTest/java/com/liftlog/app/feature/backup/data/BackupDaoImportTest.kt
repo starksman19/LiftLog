@@ -9,6 +9,8 @@ import com.liftlog.app.core.database.entity.ExerciseEntity
 import com.liftlog.app.core.database.entity.WorkoutSessionEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplateExerciseEntity
+import com.liftlog.app.core.database.entity.WorkoutPlanEntity
+import com.liftlog.app.core.database.entity.WorkoutTemplatePlanEntity
 import com.liftlog.app.core.database.model.DatabaseSnapshot
 import com.liftlog.app.core.model.ExerciseCategory
 import kotlinx.coroutines.runBlocking
@@ -60,10 +62,12 @@ class BackupDaoImportTest {
                 workoutSessions = emptyList(),
                 workoutExercises = emptyList(),
                 setEntries = emptyList(),
+                workoutPlans = listOf(WorkoutPlanEntity(id = 40L, name = "Plan A", createdAtEpochMillis = 2L)),
                 workoutTemplates = listOf(WorkoutTemplateEntity(id = 20L, name = "Nogi", createdAtEpochMillis = 2L)),
                 workoutTemplateExercises = listOf(
                     WorkoutTemplateExerciseEntity(id = 30L, templateId = 20L, exerciseId = 10L, orderIndex = 0),
                 ),
+                workoutTemplatePlans = listOf(WorkoutTemplatePlanEntity(templateId = 20L, planId = 40L)),
             ),
             replaceWorkoutData = false,
         )
@@ -71,5 +75,7 @@ class BackupDaoImportTest {
         assertEquals(1, backupDao.getWorkoutSessions().size)
         assertEquals("Nogi", backupDao.getWorkoutTemplates().single().name)
         assertEquals(1, backupDao.getWorkoutTemplateExercises().size)
+        assertEquals("Plan A", backupDao.getWorkoutPlans().single().name)
+        assertEquals(1, backupDao.getWorkoutTemplatePlans().size)
     }
 }

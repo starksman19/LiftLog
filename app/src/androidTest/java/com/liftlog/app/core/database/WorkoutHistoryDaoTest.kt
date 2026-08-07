@@ -40,13 +40,17 @@ class WorkoutHistoryDaoTest {
                 name = "Bench Press",
                 primaryMuscle = "Chest",
                 equipment = "Barbell",
-                category = ExerciseCategory.FreeWeights.name,
+                category = ExerciseCategory.Machine.name,
                 createdAtEpochMillis = 1L,
             ),
         )
-        listOf(1_000L, 2_000L, 3_000L).forEach { finishedAt ->
+        listOf(1_000L, 2_000L, 3_000L).forEachIndexed { index, finishedAt ->
             val sessionId = database.workoutDao().insertWorkoutSession(
-                WorkoutSessionEntity(startedAtEpochMillis = finishedAt - 100L, finishedAtEpochMillis = finishedAt),
+                WorkoutSessionEntity(
+                    startedAtEpochMillis = finishedAt - 100L,
+                    finishedAtEpochMillis = finishedAt,
+                    gymLocation = "Gym ${index + 1}",
+                ),
             )
             val workoutExerciseId = database.workoutDao().insertWorkoutExercise(
                 WorkoutExerciseEntity(workoutSessionId = sessionId, exerciseId = exerciseId, orderIndex = 0),
@@ -60,5 +64,7 @@ class WorkoutHistoryDaoTest {
 
         assertEquals(3, history.size)
         assertEquals(listOf(3_000L, 2_000L, 1_000L), history.map { it.finishedAtEpochMillis })
+        assertEquals(listOf("Gym 3", "Gym 2", "Gym 1"), history.map { it.gymLocation })
+        assertEquals(ExerciseCategory.Machine.name, history.first().category)
     }
 }

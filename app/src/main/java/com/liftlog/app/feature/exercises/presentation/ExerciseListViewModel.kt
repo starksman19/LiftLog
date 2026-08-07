@@ -10,7 +10,6 @@ import com.liftlog.app.feature.exercises.domain.AddCustomExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.DeleteExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
 import com.liftlog.app.feature.exercises.domain.UpdateExerciseUseCase
-import com.liftlog.app.feature.locations.domain.GymLocationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,7 +31,6 @@ class ExerciseListViewModel @Inject constructor(
     private val addCustomExerciseUseCase: AddCustomExerciseUseCase,
     private val updateExerciseUseCase: UpdateExerciseUseCase,
     private val deleteExerciseUseCase: DeleteExerciseUseCase,
-    gymLocationRepository: GymLocationRepository,
 ) : ViewModel() {
     private val query = MutableStateFlow("")
     private val sortMode = MutableStateFlow(ExerciseSortMode.NameAscending)
@@ -40,12 +38,11 @@ class ExerciseListViewModel @Inject constructor(
     val uiState: StateFlow<ExerciseListUiState> = combine(query, sortMode) { currentQuery, currentSortMode ->
         currentQuery to currentSortMode
     }.flatMapLatest { (currentQuery, currentSortMode) ->
-        combine(observeExercisesUseCase(currentQuery), gymLocationRepository.observeLocations()) { exercises, locations ->
+        observeExercisesUseCase(currentQuery).map { exercises ->
             ExerciseListUiState(
                 searchQuery = currentQuery,
                 sortMode = currentSortMode,
                 exercises = exercises.sortedWith(currentSortMode.comparator),
-                locations = locations,
             )
         }
     }.stateIn(
@@ -87,7 +84,6 @@ data class ExerciseListUiState(
     val searchQuery: String = "",
     val sortMode: ExerciseSortMode = ExerciseSortMode.NameAscending,
     val exercises: List<Exercise> = emptyList(),
-    val locations: List<String> = emptyList(),
 )
 
 enum class ExerciseSortMode(val comparator: Comparator<Exercise>) {

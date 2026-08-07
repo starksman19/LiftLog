@@ -7,6 +7,7 @@ import com.liftlog.app.core.database.entity.WorkoutSessionEntity
 import com.liftlog.app.core.database.model.WorkoutExerciseRow
 import com.liftlog.app.core.database.model.WorkoutSummaryRow
 import com.liftlog.app.core.model.ActiveWorkout
+import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.LoggedExercise
 import com.liftlog.app.core.model.LoggedSet
 import com.liftlog.app.core.model.RecentExercisePerformance
@@ -90,8 +91,11 @@ class RoomWorkoutRepository @Inject constructor(
         return workoutDao.getRecentExercisePerformances(exerciseId)
             .groupBy { it.finishedAtEpochMillis }
             .map { (finishedAt, rows) ->
+                val firstRow = rows.first()
                 RecentExercisePerformance(
                     finishedAtEpochMillis = finishedAt,
+                    gymLocation = firstRow.gymLocation,
+                    category = ExerciseCategory.valueOf(firstRow.category),
                     sets = rows.map { row ->
                         LoggedSet(
                             id = 0,

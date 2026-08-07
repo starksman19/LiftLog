@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liftlog.app.core.model.ActiveWorkout
 import com.liftlog.app.core.model.Exercise
-import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.core.model.RecentExercisePerformance
 import com.liftlog.app.core.model.WorkoutTemplate
@@ -72,11 +71,7 @@ class WorkoutViewModel @Inject constructor(
     ) { activeWorkout, exercises, templates, plans, locations ->
         WorkoutUiState(
             activeWorkout = activeWorkout,
-            availableExercises = exercises
-                .filter { exercise ->
-                    exercise.category == ExerciseCategory.FreeWeights ||
-                        exercise.gymLocation.equals(activeWorkout?.gymLocation, ignoreCase = true)
-                },
+            availableExercises = exercises,
             templates = templates,
             plans = plans,
             locations = locations,

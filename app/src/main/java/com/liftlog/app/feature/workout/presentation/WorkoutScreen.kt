@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.ActiveWorkout
 import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.ExerciseDraft
+import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.LoggedExercise
 import com.liftlog.app.core.model.LoggedSet
 import com.liftlog.app.core.model.RecentExercisePerformance
@@ -664,7 +665,6 @@ private fun ExercisePickerScreen(
                             val details = listOf(
                                 exercise.primaryMuscle,
                                 exercise.equipment,
-                                exercise.gymLocation.orEmpty(),
                             ).filter { it.isNotBlank() }.joinToString(" / ")
                             if (details.isNotBlank()) {
                                 Text(details, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -685,7 +685,6 @@ private fun ExercisePickerScreen(
 
     if (createExerciseVisible) {
         CustomExerciseDialog(
-            locations = locations,
             onDismiss = { createExerciseVisible = false },
             onSave = { draft ->
                 onCreateExercise(draft)
@@ -899,6 +898,15 @@ private fun ExerciseHistoryDialog(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                             )
+                            if (performance.category == ExerciseCategory.Machine) {
+                                Text(
+                                    text = performance.gymLocation?.let { location ->
+                                        t("Location: $location", "Lokalizacja: $location")
+                                    } ?: t("Location was not recorded", "Lokalizacja nie zostala zapisana"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                             performance.sets.forEach { set ->
                                 Text(
                                     t("Set ${set.setNumber}: ${set.weight.clean()} kg x ${set.reps}", "Seria ${set.setNumber}: ${set.weight.clean()} kg x ${set.reps}"),

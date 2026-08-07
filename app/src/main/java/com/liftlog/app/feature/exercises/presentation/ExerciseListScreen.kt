@@ -2,6 +2,8 @@ package com.liftlog.app.feature.exercises.presentation
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.util.Base64
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,7 +30,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -71,6 +71,7 @@ import com.liftlog.app.core.ui.localization.t
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
 @Composable
@@ -196,7 +197,6 @@ fun ExerciseListScreen(
     if (addDialogVisible) {
         CustomExerciseDialog(
             onDismiss = { addDialogVisible = false },
-            locations = state.locations,
             onSave = { draft ->
                 onAddCustomExercise(draft)
                 addDialogVisible = false
@@ -207,7 +207,6 @@ fun ExerciseListScreen(
     exercisePendingEdit?.let { exercise ->
         CustomExerciseDialog(
             exercise = exercise,
-            locations = state.locations,
             onDismiss = { exercisePendingEdit = null },
             onSave = { draft ->
                 onUpdateExercise(exercise.id, draft)
@@ -235,7 +234,6 @@ fun ExerciseListScreen(
 @Composable
 internal fun CustomExerciseDialog(
     exercise: Exercise? = null,
-    locations: List<String>,
     onDismiss: () -> Unit,
     onSave: (ExerciseDraft) -> Unit,
 ) {
@@ -245,7 +243,6 @@ internal fun CustomExerciseDialog(
     var muscle by remember { mutableStateOf(exercise?.primaryMuscle.orEmpty()) }
     var equipment by remember { mutableStateOf(exercise?.equipment.orEmpty()) }
     var category by remember { mutableStateOf(exercise?.category ?: ExerciseCategory.FreeWeights) }
-    var gymLocation by remember { mutableStateOf(exercise?.gymLocation.orEmpty()) }
     var youTubeUrl by remember { mutableStateOf(exercise?.youTubeUrl.orEmpty()) }
     var imageUri by remember { mutableStateOf(exercise?.imageUri) }
     var imageError by remember { mutableStateOf<String?>(null) }
@@ -268,8 +265,7 @@ internal fun CustomExerciseDialog(
             imageUri = embeddedImage
         }
     }
-    val isValid = name.isNotBlank() &&
-        (category == ExerciseCategory.FreeWeights || gymLocation.isNotBlank())
+    val isValid = name.isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -316,26 +312,6 @@ internal fun CustomExerciseDialog(
                         )
                     }
                 }
-                if (category == ExerciseCategory.Machine) {
-                    Text(t("Location"), style = MaterialTheme.typography.labelLarge)
-                    if (locations.isEmpty()) {
-                        Text(
-                            t("Add a location first in the Locations tab.", "Najpierw dodaj lokalizację w zakładce Lokalizacje."),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        LazyColumn(modifier = Modifier.heightIn(max = 160.dp)) {
-                            items(locations, key = { it }) { location ->
-                                FilterChip(
-                                    selected = gymLocation.equals(location, ignoreCase = true),
-                                    onClick = { gymLocation = location },
-                                    label = { Text(location) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
-                    }
-                }
                 OutlinedTextField(
                     value = youTubeUrl,
                     onValueChange = { youTubeUrl = it },
@@ -374,7 +350,7 @@ internal fun CustomExerciseDialog(
                             primaryMuscle = muscle,
                             equipment = equipment,
                             category = category,
-                            gymLocation = gymLocation.takeIf { category == ExerciseCategory.Machine },
+                            gymLocation = null,
                             youTubeUrl = youTubeUrl,
                             imageUri = imageUri,
                         ),
@@ -410,12 +386,38 @@ private fun ByteArray.toCompressedImageDataUrl(): String {
             inPreferredConfig = Bitmap.Config.ARGB_8888
         },
     ) ?: error("Unable to decode the selected photo.")
-    val scaledBitmap = bitmap.scaleDownTo(1_920)
+    val orientedBitmap = bitmap.withExifOrientation(this)
+    if (orientedBitmap !== bitmap) bitmap.recycle()
+    val scaledBitmap = orientedBitmap.scaleDownTo(1_920)
     val output = ByteArrayOutputStream()
     scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 85, output)
-    if (scaledBitmap !== bitmap) bitmap.recycle()
+    if (scaledBitmap !== orientedBitmap) orientedBitmap.recycle()
     scaledBitmap.recycle()
     return "data:image/jpeg;base64,${Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)}"
+}
+
+private fun Bitmap.withExifOrientation(source: ByteArray): Bitmap {
+    val orientation = ByteArrayInputStream(source).use { stream ->
+        ExifInterface(stream).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+    }
+    val matrix = Matrix().apply {
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> postScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> postScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                postRotate(90f)
+                postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                postRotate(270f)
+                postScale(-1f, 1f)
+            }
+        }
+    }
+    return if (matrix.isIdentity) this else Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
 }
 
 private fun imageSampleSize(width: Int, height: Int): Int {
@@ -469,7 +471,6 @@ private fun ExerciseCard(
                 val details = listOf(
                     exercise.primaryMuscle,
                     exercise.equipment,
-                    exercise.gymLocation.orEmpty(),
                 ).filter { it.isNotBlank() }.joinToString(" / ")
                 if (details.isNotBlank()) {
                     Text(

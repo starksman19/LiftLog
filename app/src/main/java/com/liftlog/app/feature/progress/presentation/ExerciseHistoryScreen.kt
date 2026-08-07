@@ -178,7 +178,6 @@ private fun ExerciseInformationCard(
                 Text(details, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(t(if (exercise.category == com.liftlog.app.core.model.ExerciseCategory.Machine) "Machine" else "Free weights"))
-            exercise.gymLocation?.let { Text(t("Location: $it", "Lokalizacja: $it")) }
             image?.let {
                 Image(
                     bitmap = it,

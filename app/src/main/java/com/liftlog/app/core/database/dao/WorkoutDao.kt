@@ -91,11 +91,14 @@ interface WorkoutDao {
     @Query(
         """
         SELECT ws.finishedAtEpochMillis AS finishedAtEpochMillis,
+               ws.gymLocation AS gymLocation,
+               e.category AS category,
                se.setNumber AS setNumber,
                se.weight AS weight,
                se.reps AS reps
         FROM workout_sessions AS ws
         JOIN workout_exercises AS we ON we.workoutSessionId = ws.id
+        JOIN exercises AS e ON e.id = we.exerciseId
         JOIN set_entries AS se ON se.workoutExerciseId = we.id
         WHERE ws.finishedAtEpochMillis IS NOT NULL
           AND we.exerciseId = :exerciseId

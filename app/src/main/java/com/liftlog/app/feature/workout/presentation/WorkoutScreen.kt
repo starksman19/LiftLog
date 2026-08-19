@@ -2,6 +2,7 @@ package com.liftlog.app.feature.workout.presentation
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -339,6 +340,9 @@ private fun ActiveWorkoutScreen(
         .filter { it.completedAtEpochMillis > 0 }
         .maxByOrNull { it.completedAtEpochMillis }
     var globalRestTimerVisible by remember(latestLoggedSet?.id) { mutableStateOf(true) }
+    var globalRestTimerStartedAtMillis by remember(latestLoggedSet?.id) {
+        mutableStateOf(latestLoggedSet?.completedAtEpochMillis ?: 0L)
+    }
     if (exercisePickerVisible) {
         ExercisePickerScreen(
             exercises = availableExercises,
@@ -359,9 +363,10 @@ private fun ActiveWorkoutScreen(
     Column(modifier = modifier.fillMaxSize()) {
         if (restTimerMode == RestTimerMode.Workout && latestLoggedSet != null && globalRestTimerVisible) {
             RestTimerBanner(
-                lastSetCompletedAtEpochMillis = latestLoggedSet.completedAtEpochMillis,
+                lastSetCompletedAtEpochMillis = globalRestTimerStartedAtMillis,
                 offsetSeconds = restTimerOffsetSeconds,
                 onDismiss = { globalRestTimerVisible = false },
+                onReset = { globalRestTimerStartedAtMillis = System.currentTimeMillis() },
                 modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
             )
         }
@@ -568,8 +573,10 @@ private fun RestTimerBanner(
     lastSetCompletedAtEpochMillis: Long,
     offsetSeconds: Int,
     onDismiss: () -> Unit,
+    onReset: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val timerText = restTimerText(lastSetCompletedAtEpochMillis, offsetSeconds)
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -591,9 +598,10 @@ private fun RestTimerBanner(
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = restTimerText(lastSetCompletedAtEpochMillis, offsetSeconds),
+                text = timerText,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable(onClick = onReset),
             )
         }
     }
@@ -820,6 +828,7 @@ internal fun LoggedExerciseCard(
     var exerciseRestTimerStartedAtMillis by remember(latestLoggedSet?.id) {
         mutableStateOf(latestLoggedSet?.completedAtEpochMillis ?: 0L)
     }
+    var exerciseRestTimerVisible by remember(latestLoggedSet?.id) { mutableStateOf(true) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -876,28 +885,38 @@ internal fun LoggedExerciseCard(
             }
 
             if (restTimerMode == RestTimerMode.Exercise && latestLoggedSet != null) {
-                val timerText = restTimerText(exerciseRestTimerStartedAtMillis, restTimerOffsetSeconds)
+                val timerText = if (exerciseRestTimerVisible) {
+                    restTimerText(exerciseRestTimerStartedAtMillis, restTimerOffsetSeconds)
+                } else {
+                    null
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(
-                        onClick = { exerciseRestTimerStartedAtMillis = System.currentTimeMillis() },
+                        onClick = { exerciseRestTimerVisible = !exerciseRestTimerVisible },
                         modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             Icons.Outlined.Timer,
-                            contentDescription = t("Restart rest timer", "Zresetuj timer przerwy"),
+                            contentDescription = if (exerciseRestTimerVisible) {
+                                t("Hide rest timer", "Ukryj timer przerwy")
+                            } else {
+                                t("Show rest timer", "Pokaż timer przerwy")
+                            },
                         )
                     }
-                    Text(
-                        text = t(
-                            "Rest: $timerText",
-                            "Przerwa: $timerText",
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    timerText?.let { value ->
+                        Text(
+                            text = t("Rest: $value", "Przerwa: $value"),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.clickable {
+                                exerciseRestTimerStartedAtMillis = System.currentTimeMillis()
+                            },
+                        )
+                    }
                 }
             }
 

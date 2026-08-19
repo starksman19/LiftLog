@@ -239,6 +239,7 @@ class RoomWorkoutRepository @Inject constructor(
                                 setNumber = setEntry.setNumber,
                                 weight = setEntry.weight,
                                 reps = setEntry.reps,
+                                completedAtEpochMillis = setEntry.completedAtEpochMillis,
                             )
                         },
                 )

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FileDownload
@@ -31,6 +32,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,6 +60,8 @@ fun SettingsRoute(
     SettingsScreen(
         state = state,
         onWeightUnitChanged = viewModel::setWeightUnit,
+        onRestTimerEnabledChanged = viewModel::setRestTimerEnabled,
+        onRestTimerOffsetChanged = viewModel::setRestTimerOffsetSeconds,
         onLanguageChanged = viewModel::setLanguage,
         onExport = viewModel::exportTo,
         onExportTrainingReport = viewModel::exportTrainingReportTo,
@@ -74,6 +79,8 @@ fun SettingsRoute(
 fun SettingsScreen(
     state: SettingsUiState,
     onWeightUnitChanged: (WeightUnit) -> Unit,
+    onRestTimerEnabledChanged: (Boolean) -> Unit,
+    onRestTimerOffsetChanged: (Int) -> Unit,
     onLanguageChanged: (AppLanguage) -> Unit,
     onExport: (android.net.Uri, BackupSelection) -> Unit,
     onExportTrainingReport: (android.net.Uri, LocalDate, LocalDate) -> Unit,
@@ -94,6 +101,9 @@ fun SettingsScreen(
     }
     var locationPendingEdit by remember { mutableStateOf<String?>(null) }
     var locationPendingDelete by remember { mutableStateOf<String?>(null) }
+    var restTimerOffsetText by remember(state.settings.restTimerOffsetSeconds) {
+        mutableStateOf(state.settings.restTimerOffsetSeconds.toString())
+    }
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
         onResult = { uri -> uri?.let { onExport(it, exportSelection) } },
@@ -166,6 +176,37 @@ fun SettingsScreen(
                             )
                         }
                     }
+                }
+            }
+            item {
+                SettingsSection(title = t("Rest timer", "Timer przerwy")) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(t("Show after logging a set", "Pokazuj po zapisaniu serii"))
+                        }
+                        Switch(
+                            checked = state.settings.restTimerEnabled,
+                            onCheckedChange = onRestTimerEnabledChanged,
+                        )
+                    }
+                    OutlinedTextField(
+                        value = restTimerOffsetText,
+                        onValueChange = { value ->
+                            if (value.all(Char::isDigit)) {
+                                restTimerOffsetText = value
+                                value.toIntOrNull()?.let(onRestTimerOffsetChanged)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = state.settings.restTimerEnabled,
+                        label = { Text(t("Timer offset (seconds)", "Offset timera (sekundy)")) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
                 }
             }
             if (state.locations.isNotEmpty()) {

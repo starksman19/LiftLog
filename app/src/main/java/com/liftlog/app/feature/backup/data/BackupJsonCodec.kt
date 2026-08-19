@@ -19,7 +19,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal object BackupJsonCodec {
-    private const val FormatVersion = 6
+    private const val FormatVersion = 7
 
     fun encode(backup: LiftLogBackup): String = JSONObject().apply {
         put("formatVersion", FormatVersion)
@@ -29,6 +29,8 @@ internal object BackupJsonCodec {
             put("settings", JSONObject().apply {
                 put("weightUnit", settings.weightUnit.name)
                 put("defaultRestSeconds", settings.defaultRestSeconds)
+                put("restTimerEnabled", settings.restTimerEnabled)
+                put("restTimerOffsetSeconds", settings.restTimerOffsetSeconds)
             })
         }
         put("database", JSONObject().apply {
@@ -131,6 +133,8 @@ internal object BackupJsonCodec {
             AppSettings(
                 weightUnit = settingsJson.getString("weightUnit").toWeightUnit(),
                 defaultRestSeconds = settingsJson.getInt("defaultRestSeconds").coerceIn(0, 600),
+                restTimerEnabled = settingsJson.optBoolean("restTimerEnabled", true),
+                restTimerOffsetSeconds = settingsJson.optInt("restTimerOffsetSeconds", 0).coerceIn(0, 600),
             )
         } else {
             null

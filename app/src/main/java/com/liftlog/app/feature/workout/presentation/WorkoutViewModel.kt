@@ -2,6 +2,7 @@ package com.liftlog.app.feature.workout.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.liftlog.app.core.datastore.SettingsRepository
 import com.liftlog.app.core.model.ActiveWorkout
 import com.liftlog.app.core.model.Exercise
 import com.liftlog.app.core.model.ExerciseDraft
@@ -58,6 +59,7 @@ class WorkoutViewModel @Inject constructor(
     private val updateActiveWorkoutDetailsUseCase: UpdateActiveWorkoutDetailsUseCase,
     private val updateWorkoutExerciseNotesUseCase: UpdateWorkoutExerciseNotesUseCase,
     private val deleteWorkoutExerciseUseCase: DeleteWorkoutExerciseUseCase,
+    settingsRepository: SettingsRepository,
     gymLocationRepository: GymLocationRepository,
 ) : ViewModel() {
     private val exerciseHistory = MutableStateFlow<ExerciseHistoryDialogState?>(null)
@@ -77,6 +79,12 @@ class WorkoutViewModel @Inject constructor(
             locations = locations,
         )
     }
+        .combine(settingsRepository.settings) { state, settings ->
+            state.copy(
+                restTimerEnabled = settings.restTimerEnabled,
+                restTimerOffsetSeconds = settings.restTimerOffsetSeconds,
+            )
+        }
         .combine(exerciseHistory) { state, history -> state.copy(exerciseHistory = history) }
         .stateIn(
             scope = viewModelScope,
@@ -193,6 +201,8 @@ data class WorkoutUiState(
     val templates: List<WorkoutTemplate> = emptyList(),
     val plans: List<WorkoutPlan> = emptyList(),
     val locations: List<String> = emptyList(),
+    val restTimerEnabled: Boolean = true,
+    val restTimerOffsetSeconds: Int = 0,
     val exerciseHistory: ExerciseHistoryDialogState? = null,
 )
 

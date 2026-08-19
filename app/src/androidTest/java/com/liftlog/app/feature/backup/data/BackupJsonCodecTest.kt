@@ -8,6 +8,7 @@ import com.liftlog.app.core.database.entity.WorkoutPlanEntity
 import com.liftlog.app.core.database.entity.WorkoutTemplatePlanEntity
 import com.liftlog.app.core.database.model.DatabaseSnapshot
 import com.liftlog.app.core.model.ExerciseCategory
+import com.liftlog.app.core.model.AppSettings
 import com.liftlog.app.feature.backup.domain.BackupSelection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -16,6 +17,36 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class BackupJsonCodecTest {
+    @Test
+    fun roundTripPreservesRestTimerSettings() {
+        val backup = LiftLogBackup(
+            exportedAtEpochMillis = 1L,
+            settings = AppSettings(restTimerEnabled = false, restTimerOffsetSeconds = 18),
+            snapshot = DatabaseSnapshot(
+                exercises = emptyList(),
+                workoutSessions = emptyList(),
+                workoutExercises = emptyList(),
+                setEntries = emptyList(),
+                workoutTemplates = emptyList(),
+                workoutTemplateExercises = emptyList(),
+            ),
+            selection = BackupSelection(
+                settings = true,
+                locations = false,
+                exercises = false,
+                workoutSessions = false,
+                workoutExercises = false,
+                setEntries = false,
+                workoutTemplates = false,
+            ),
+        )
+
+        val restored = BackupJsonCodec.decode(BackupJsonCodec.encode(backup))
+
+        assertEquals(false, restored.settings?.restTimerEnabled)
+        assertEquals(18, restored.settings?.restTimerOffsetSeconds)
+    }
+
     @Test
     fun roundTripPreservesExercisePhotoAndCurrentExerciseFields() {
         val imageUri = "data:image/jpeg;base64,AAECAwQ="

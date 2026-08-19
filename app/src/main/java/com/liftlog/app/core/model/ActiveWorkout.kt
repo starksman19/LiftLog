@@ -24,4 +24,5 @@ data class LoggedSet(
     val setNumber: Int,
     val weight: Double,
     val reps: Int,
+    val completedAtEpochMillis: Long = 0,
 )

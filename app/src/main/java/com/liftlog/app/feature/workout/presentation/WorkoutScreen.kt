@@ -30,6 +30,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -48,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +71,7 @@ import com.liftlog.app.feature.exercises.presentation.CustomExerciseDialog
 import com.liftlog.app.core.ui.localization.t
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.delay
 
 @Composable
 fun WorkoutRoute(
@@ -140,6 +143,8 @@ fun WorkoutScreen(
             activeWorkout = activeWorkout,
             availableExercises = state.availableExercises,
             locations = state.locations,
+            restTimerEnabled = state.restTimerEnabled,
+            restTimerOffsetSeconds = state.restTimerOffsetSeconds,
             onSaveActiveWorkoutAsTemplate = onSaveActiveWorkoutAsTemplate,
             onAddExercises = onAddExercises,
             onCreateAndAddExercise = onCreateAndAddExercise,
@@ -305,6 +310,8 @@ private fun ActiveWorkoutScreen(
     activeWorkout: ActiveWorkout,
     availableExercises: List<Exercise>,
     locations: List<String>,
+    restTimerEnabled: Boolean,
+    restTimerOffsetSeconds: Int,
     onSaveActiveWorkoutAsTemplate: (String) -> Unit,
     onAddExercises: (List<Long>) -> Unit,
     onCreateAndAddExercise: (ExerciseDraft) -> Unit,
@@ -324,6 +331,12 @@ private fun ActiveWorkoutScreen(
     var exercisePickerVisible by remember { mutableStateOf(false) }
     var finishConfirmationVisible by remember { mutableStateOf(false) }
     var discardConfirmationVisible by remember { mutableStateOf(false) }
+    val latestLoggedSet = activeWorkout.exercises
+        .asSequence()
+        .flatMap { it.sets.asSequence() }
+        .filter { it.completedAtEpochMillis > 0 }
+        .maxByOrNull { it.completedAtEpochMillis }
+    var restTimerDismissed by remember(latestLoggedSet?.id) { mutableStateOf(false) }
     if (exercisePickerVisible) {
         ExercisePickerScreen(
             exercises = availableExercises,
@@ -404,29 +417,32 @@ private fun ActiveWorkoutScreen(
             }
         }
 
+        if (restTimerEnabled && latestLoggedSet != null && !restTimerDismissed) {
+            RestTimerBanner(
+                lastSetCompletedAtEpochMillis = latestLoggedSet.completedAtEpochMillis,
+                offsetSeconds = restTimerOffsetSeconds,
+                onDismiss = { restTimerDismissed = true },
+            )
+        }
+
         OutlinedButton(onClick = { exercisePickerVisible = true }, modifier = Modifier.fillMaxWidth().height(42.dp)) {
             Icon(Icons.Outlined.Add, contentDescription = null)
             Text(t("Add exercises"), modifier = Modifier.padding(start = 8.dp))
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Button(
+            onClick = { finishConfirmationVisible = true },
+            modifier = Modifier.fillMaxWidth().height(48.dp),
         ) {
-            OutlinedButton(
-                onClick = { discardConfirmationVisible = true },
-                modifier = Modifier.weight(1f).height(42.dp),
-            ) {
-                Icon(Icons.Outlined.Delete, contentDescription = null)
-                Text(t("Discard", "Odrzuć"), modifier = Modifier.padding(start = 8.dp))
-            }
-            Button(
-                onClick = { finishConfirmationVisible = true },
-                modifier = Modifier.weight(1f).height(42.dp),
-            ) {
-                Icon(Icons.Outlined.Check, contentDescription = null)
-                Text(t("Finish workout", "Zakończ trening"), modifier = Modifier.padding(start = 8.dp))
-            }
+            Icon(Icons.Outlined.Check, contentDescription = null)
+            Text(t("Finish workout", "Zakończ trening"), modifier = Modifier.padding(start = 8.dp))
+        }
+        TextButton(
+            onClick = { discardConfirmationVisible = true },
+            modifier = Modifier.align(Alignment.End),
+        ) {
+            Icon(Icons.Outlined.Delete, contentDescription = null)
+            Text(t("Discard workout", "Odrzuć trening"), modifier = Modifier.padding(start = 6.dp))
         }
 
         LazyColumn(
@@ -513,6 +529,54 @@ private fun ActiveWorkoutScreen(
         )
     }
 }
+
+@Composable
+private fun RestTimerBanner(
+    lastSetCompletedAtEpochMillis: Long,
+    offsetSeconds: Int,
+    onDismiss: () -> Unit,
+) {
+    val elapsedSeconds by produceState(
+        initialValue = 0L,
+        lastSetCompletedAtEpochMillis,
+        offsetSeconds,
+    ) {
+        while (true) {
+            value = ((System.currentTimeMillis() - lastSetCompletedAtEpochMillis) / 1_000L + offsetSeconds)
+                .coerceAtLeast(0L)
+            delay(1_000L)
+        }
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
+                Icon(
+                    Icons.Outlined.Timer,
+                    contentDescription = t("Hide rest timer", "Ukryj timer przerwy"),
+                )
+            }
+            Text(
+                text = t("Rest since last set", "Przerwa od ostatniej serii"),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = elapsedSeconds.asTimerText(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+private fun Long.asTimerText(): String = "%d:%02d".format(this / 60, this % 60)
 
 @Composable
 private fun WorkoutDetailsDialog(

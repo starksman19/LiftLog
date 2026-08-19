@@ -65,6 +65,14 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setWeightUnit(unit) }
     }
 
+    fun setRestTimerEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setRestTimerEnabled(enabled) }
+    }
+
+    fun setRestTimerOffsetSeconds(seconds: Int) {
+        viewModelScope.launch { settingsRepository.setRestTimerOffsetSeconds(seconds) }
+    }
+
     fun setLanguage(language: AppLanguage) {
         AppLanguageState.set(language)
         this.language.value = language

@@ -12,6 +12,7 @@ import com.liftlog.app.core.database.entity.WorkoutTemplatePlanEntity
 import com.liftlog.app.core.database.model.DatabaseSnapshot
 import com.liftlog.app.core.model.AppSettings
 import com.liftlog.app.core.model.ExerciseCategory
+import com.liftlog.app.core.model.RestTimerMode
 import com.liftlog.app.core.model.WeightUnit
 import com.liftlog.app.feature.backup.domain.BackupSection
 import com.liftlog.app.feature.backup.domain.BackupSelection
@@ -19,7 +20,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal object BackupJsonCodec {
-    private const val FormatVersion = 7
+    private const val FormatVersion = 8
 
     fun encode(backup: LiftLogBackup): String = JSONObject().apply {
         put("formatVersion", FormatVersion)
@@ -29,7 +30,8 @@ internal object BackupJsonCodec {
             put("settings", JSONObject().apply {
                 put("weightUnit", settings.weightUnit.name)
                 put("defaultRestSeconds", settings.defaultRestSeconds)
-                put("restTimerEnabled", settings.restTimerEnabled)
+                put("restTimerMode", settings.restTimerMode.name)
+                put("restTimerEnabled", settings.restTimerMode != RestTimerMode.Off)
                 put("restTimerOffsetSeconds", settings.restTimerOffsetSeconds)
             })
         }
@@ -133,7 +135,9 @@ internal object BackupJsonCodec {
             AppSettings(
                 weightUnit = settingsJson.getString("weightUnit").toWeightUnit(),
                 defaultRestSeconds = settingsJson.getInt("defaultRestSeconds").coerceIn(0, 600),
-                restTimerEnabled = settingsJson.optBoolean("restTimerEnabled", true),
+                restTimerMode = settingsJson.optString("restTimerMode")
+                    .let { value -> RestTimerMode.entries.firstOrNull { it.name == value } }
+                    ?: if (settingsJson.optBoolean("restTimerEnabled", true)) RestTimerMode.Workout else RestTimerMode.Off,
                 restTimerOffsetSeconds = settingsJson.optInt("restTimerOffsetSeconds", 0).coerceIn(0, 600),
             )
         } else {

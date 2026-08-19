@@ -30,6 +30,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -88,7 +91,7 @@ fun ProgressScreen(
         }
 
         item {
-            TrainingActivityCard(sessions = state.recentVolumes)
+            SetsTrendCard(sessions = state.recentVolumes)
         }
 
         item {
@@ -130,11 +133,10 @@ fun ProgressScreen(
 }
 
 @Composable
-private fun TrainingActivityCard(
+private fun SetsTrendCard(
     sessions: List<SessionVolume>,
     modifier: Modifier = Modifier,
 ) {
-    val days = remember(sessions) { sessions.toActivityDays() }
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -147,39 +149,43 @@ private fun TrainingActivityCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = t("Training activity", "Aktywność treningowa"),
+                text = t("Training trend", "Trend treningowy"),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = if (days.isEmpty()) {
+                text = if (sessions.isEmpty()) {
                     t("No completed workouts yet", "Brak ukończonych treningów")
                 } else {
-                    t("Completed workouts by day", "Ukończone treningi według dni")
+                    t("Completed sets in each workout", "Ukończone serie w każdym treningu")
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (days.isNotEmpty()) {
-                ActivityChart(days = days)
+            if (sessions.isNotEmpty()) {
+                SetsTrendChart(sessions = sessions)
             }
         }
     }
 }
 
 @Composable
-private fun ActivityChart(
-    days: List<ActivityDay>,
+private fun SetsTrendChart(
+    sessions: List<SessionVolume>,
     modifier: Modifier = Modifier,
 ) {
     val chartColor = MaterialTheme.colorScheme.primary
     val guideColor = MaterialTheme.colorScheme.outlineVariant
-    val maximum = days.maxOf { it.workoutCount }.coerceAtLeast(1)
+    val maximum = sessions.maxOf { it.setCount }.coerceAtLeast(1)
+    val average = sessions.map { it.setCount }.average()
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(t("Y-axis: workouts", "Oś Y: treningi"), style = MaterialTheme.typography.labelSmall)
-            Text(t("Max $maximum", "Maks. $maximum"), style = MaterialTheme.typography.labelSmall)
+            Text(t("Y-axis: sets", "Oś Y: serie"), style = MaterialTheme.typography.labelSmall)
+            Text(
+                t("Average ${average.compact()}", "Średnio ${average.compact()}"),
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(
@@ -188,6 +194,7 @@ private fun ActivityChart(
                 horizontalAlignment = Alignment.End,
             ) {
                 Text(maximum.toString(), style = MaterialTheme.typography.labelSmall)
+                Text((maximum / 2).toString(), style = MaterialTheme.typography.labelSmall)
                 Text("0", style = MaterialTheme.typography.labelSmall)
             }
             Canvas(
@@ -207,24 +214,33 @@ private fun ActivityChart(
                         strokeWidth = 1.dp.toPx(),
                     )
                 }
-                val slotWidth = size.width / days.size
-                val barWidth = (slotWidth * 0.56f).coerceAtLeast(3.dp.toPx())
-                days.forEachIndexed { index, day ->
-                    val barHeight = (bottom - top) * day.workoutCount / maximum
-                    val left = index * slotWidth + (slotWidth - barWidth) / 2f
-                    drawRoundRect(
+                val xStep = if (sessions.size == 1) 0f else size.width / (sessions.size - 1)
+                val points = sessions.mapIndexed { index, session ->
+                    Offset(
+                        x = if (sessions.size == 1) size.width / 2f else index * xStep,
+                        y = bottom - (bottom - top) * session.setCount / maximum,
+                    )
+                }
+                if (points.size > 1) {
+                    val path = Path().apply {
+                        moveTo(points.first().x, points.first().y)
+                        points.drop(1).forEach { point -> lineTo(point.x, point.y) }
+                    }
+                    drawPath(path = path, color = chartColor, style = Stroke(width = 2.dp.toPx()))
+                }
+                points.forEach { point ->
+                    drawCircle(
                         color = chartColor,
-                        topLeft = androidx.compose.ui.geometry.Offset(left, bottom - barHeight),
-                        size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()),
+                        radius = 4.dp.toPx(),
+                        center = point,
                     )
                 }
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(days.first().date.activityDateText(), style = MaterialTheme.typography.labelSmall)
-            Text(t("X-axis: calendar days", "Oś X: dni kalendarzowe"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(days.last().date.activityDateText(), style = MaterialTheme.typography.labelSmall)
+            Text(sessions.first().startedAtEpochMillis.activityDateText(), style = MaterialTheme.typography.labelSmall)
+            Text(t("X-axis: workouts", "Oś X: treningi"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(sessions.last().startedAtEpochMillis.activityDateText(), style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -272,6 +288,12 @@ private fun List<SessionVolume>.toActivityDays(): List<ActivityDay> =
 
 private fun LocalDate.activityDateText(): String =
     format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
+
+private fun Long.activityDateText(): String =
+    Instant.ofEpochMilli(this)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate()
+        .activityDateText()
 
 @Composable
 private fun ExerciseProgressCard(

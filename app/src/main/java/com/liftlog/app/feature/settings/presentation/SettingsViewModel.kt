@@ -7,6 +7,7 @@ import com.liftlog.app.core.datastore.SettingsRepository
 import com.liftlog.app.core.model.AppSettings
 import com.liftlog.app.core.model.AppLanguage
 import com.liftlog.app.core.model.WeightUnit
+import com.liftlog.app.core.model.RestTimerMode
 import com.liftlog.app.core.ui.localization.localizedNow
 import com.liftlog.app.core.ui.localization.AppLanguageState
 import com.liftlog.app.feature.backup.domain.ExportBackupUseCase
@@ -65,8 +66,8 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setWeightUnit(unit) }
     }
 
-    fun setRestTimerEnabled(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setRestTimerEnabled(enabled) }
+    fun setRestTimerMode(mode: RestTimerMode) {
+        viewModelScope.launch { settingsRepository.setRestTimerMode(mode) }
     }
 
     fun setRestTimerOffsetSeconds(seconds: Int) {

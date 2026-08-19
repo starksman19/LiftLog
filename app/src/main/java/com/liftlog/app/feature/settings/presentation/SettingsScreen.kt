@@ -32,7 +32,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,6 +46,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.WeightUnit
 import com.liftlog.app.core.model.AppLanguage
+import com.liftlog.app.core.model.RestTimerMode
 import com.liftlog.app.feature.backup.domain.BackupSection
 import com.liftlog.app.feature.backup.domain.BackupSelection
 import com.liftlog.app.core.ui.localization.t
@@ -60,7 +60,7 @@ fun SettingsRoute(
     SettingsScreen(
         state = state,
         onWeightUnitChanged = viewModel::setWeightUnit,
-        onRestTimerEnabledChanged = viewModel::setRestTimerEnabled,
+        onRestTimerModeChanged = viewModel::setRestTimerMode,
         onRestTimerOffsetChanged = viewModel::setRestTimerOffsetSeconds,
         onLanguageChanged = viewModel::setLanguage,
         onExport = viewModel::exportTo,
@@ -79,7 +79,7 @@ fun SettingsRoute(
 fun SettingsScreen(
     state: SettingsUiState,
     onWeightUnitChanged: (WeightUnit) -> Unit,
-    onRestTimerEnabledChanged: (Boolean) -> Unit,
+    onRestTimerModeChanged: (RestTimerMode) -> Unit,
     onRestTimerOffsetChanged: (Int) -> Unit,
     onLanguageChanged: (AppLanguage) -> Unit,
     onExport: (android.net.Uri, BackupSelection) -> Unit,
@@ -180,19 +180,33 @@ fun SettingsScreen(
             }
             item {
                 SettingsSection(title = t("Rest timer", "Timer przerwy")) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(t("Show after logging a set", "Pokazuj po zapisaniu serii"))
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        RestTimerMode.entries.forEachIndexed { index, mode ->
+                            SegmentedButton(
+                                selected = state.settings.restTimerMode == mode,
+                                onClick = { onRestTimerModeChanged(mode) },
+                                shape = SegmentedButtonDefaults.itemShape(index, RestTimerMode.entries.size),
+                                label = {
+                                    Text(
+                                        when (mode) {
+                                            RestTimerMode.Workout -> t("Workout", "Trening")
+                                            RestTimerMode.Exercise -> t("Exercise", "Ćwiczenie")
+                                            RestTimerMode.Off -> t("Off", "Wyłączony")
+                                        },
+                                    )
+                                },
+                            )
                         }
-                        Switch(
-                            checked = state.settings.restTimerEnabled,
-                            onCheckedChange = onRestTimerEnabledChanged,
-                        )
                     }
+                    Text(
+                        text = when (state.settings.restTimerMode) {
+                            RestTimerMode.Workout -> t("One timer below the workout header.", "Jeden timer pod nagłówkiem treningu.")
+                            RestTimerMode.Exercise -> t("A small timer on each exercised card.", "Mały timer na każdym kafelku ćwiczenia.")
+                            RestTimerMode.Off -> t("Timers are hidden everywhere.", "Timery są ukryte wszędzie.")
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     OutlinedTextField(
                         value = restTimerOffsetText,
                         onValueChange = { value ->
@@ -202,7 +216,7 @@ fun SettingsScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = state.settings.restTimerEnabled,
+                        enabled = state.settings.restTimerMode != RestTimerMode.Off,
                         label = { Text(t("Timer offset (seconds)", "Offset timera (sekundy)")) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

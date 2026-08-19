@@ -18,6 +18,7 @@ import com.liftlog.app.core.database.model.DatabaseSnapshot
 import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.AppSettings
 import com.liftlog.app.core.model.WeightUnit
+import com.liftlog.app.core.model.RestTimerMode
 import com.liftlog.app.feature.backup.domain.BackupSelection
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -93,7 +94,7 @@ class BackupDaoImportTest {
             settings = AppSettings(
                 weightUnit = WeightUnit.Pounds,
                 defaultRestSeconds = 120,
-                restTimerEnabled = false,
+                restTimerMode = RestTimerMode.Off,
                 restTimerOffsetSeconds = 15,
             ),
             selection = BackupSelection.Everything,
@@ -157,7 +158,7 @@ class BackupDaoImportTest {
         val imported = backupDao.snapshot()
 
         assertEquals(WeightUnit.Pounds, decoded.settings?.weightUnit)
-        assertEquals(false, decoded.settings?.restTimerEnabled)
+        assertEquals(RestTimerMode.Off, decoded.settings?.restTimerMode)
         assertEquals(15, decoded.settings?.restTimerOffsetSeconds)
         assertEquals("Home gym", imported.gymLocations.single().name)
         assertEquals("https://youtube.com/watch?v=leg-press", imported.exercises.single().youTubeUrl)

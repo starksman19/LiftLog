@@ -65,6 +65,7 @@ import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.LoggedExercise
 import com.liftlog.app.core.model.LoggedSet
 import com.liftlog.app.core.model.RecentExercisePerformance
+import com.liftlog.app.core.model.RestTimerMode
 import com.liftlog.app.core.model.WorkoutTemplate
 import com.liftlog.app.core.ui.theme.LiftLogTheme
 import com.liftlog.app.feature.exercises.presentation.CustomExerciseDialog
@@ -143,7 +144,7 @@ fun WorkoutScreen(
             activeWorkout = activeWorkout,
             availableExercises = state.availableExercises,
             locations = state.locations,
-            restTimerEnabled = state.restTimerEnabled,
+            restTimerMode = state.restTimerMode,
             restTimerOffsetSeconds = state.restTimerOffsetSeconds,
             onSaveActiveWorkoutAsTemplate = onSaveActiveWorkoutAsTemplate,
             onAddExercises = onAddExercises,
@@ -310,7 +311,7 @@ private fun ActiveWorkoutScreen(
     activeWorkout: ActiveWorkout,
     availableExercises: List<Exercise>,
     locations: List<String>,
-    restTimerEnabled: Boolean,
+    restTimerMode: RestTimerMode,
     restTimerOffsetSeconds: Int,
     onSaveActiveWorkoutAsTemplate: (String) -> Unit,
     onAddExercises: (List<Long>) -> Unit,
@@ -336,7 +337,7 @@ private fun ActiveWorkoutScreen(
         .flatMap { it.sets.asSequence() }
         .filter { it.completedAtEpochMillis > 0 }
         .maxByOrNull { it.completedAtEpochMillis }
-    var restTimerDismissed by remember(latestLoggedSet?.id) { mutableStateOf(false) }
+    var globalRestTimerVisible by remember(latestLoggedSet?.id) { mutableStateOf(true) }
     if (exercisePickerVisible) {
         ExercisePickerScreen(
             exercises = availableExercises,
@@ -354,102 +355,120 @@ private fun ActiveWorkoutScreen(
         )
         return
     }
-    Column(
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column {
-                Text(
-                    text = t("Active Workout"),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = t(
-                        "${activeWorkout.exercises.size} exercises • ${activeWorkout.exercises.sumOf { it.sets.size }} sets",
-                        "${activeWorkout.exercises.size} ćwiczeń • ${activeWorkout.exercises.sumOf { it.sets.size }} serii",
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                activeWorkout.gymLocation?.let { location ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = t("Active Workout"),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = t(
+                            "${activeWorkout.exercises.size} exercises • ${activeWorkout.exercises.sumOf { it.sets.size }} sets",
+                            "${activeWorkout.exercises.size} ćwiczeń • ${activeWorkout.exercises.sumOf { it.sets.size }} serii",
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    activeWorkout.gymLocation?.let { location ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Outlined.LocationOn,
+                                contentDescription = null,
+                                modifier = Modifier.padding(end = 4.dp),
+                            )
+                            Text(
+                                text = location,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                Row {
+                    if (restTimerMode == RestTimerMode.Workout && latestLoggedSet != null) {
+                        IconButton(
+                            onClick = { globalRestTimerVisible = !globalRestTimerVisible },
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Timer,
+                                contentDescription = if (globalRestTimerVisible) {
+                                    t("Hide rest timer", "Ukryj timer przerwy")
+                                } else {
+                                    t("Show rest timer", "Pokaż timer przerwy")
+                                },
+                            )
+                        }
+                    }
+                    IconButton(onClick = { workoutDetailsDialogVisible = true }, modifier = Modifier.size(40.dp)) {
                         Icon(
-                            imageVector = Icons.Outlined.LocationOn,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 4.dp),
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = t("Edit workout details", "Edytuj szczegóły treningu"),
                         )
-                        Text(
-                            text = location,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    }
+                    IconButton(
+                        onClick = { saveTemplateDialogVisible = true },
+                        enabled = activeWorkout.exercises.isNotEmpty(),
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.BookmarkAdd,
+                            contentDescription = t("Save as template", "Zapisz jako szablon"),
                         )
                     }
                 }
             }
+        }
 
-            Row {
-                IconButton(onClick = { workoutDetailsDialogVisible = true }, modifier = Modifier.size(40.dp)) {
-                    Icon(
-                        imageVector = Icons.Outlined.Edit,
-                        contentDescription = t("Edit workout details", "Edytuj szczegóły treningu"),
-                    )
-                }
-                IconButton(
-                    onClick = { saveTemplateDialogVisible = true },
-                    enabled = activeWorkout.exercises.isNotEmpty(),
-                    modifier = Modifier.size(40.dp),
+        if (restTimerMode == RestTimerMode.Workout && latestLoggedSet != null && globalRestTimerVisible) {
+            item {
+                RestTimerBanner(
+                    lastSetCompletedAtEpochMillis = latestLoggedSet.completedAtEpochMillis,
+                    offsetSeconds = restTimerOffsetSeconds,
+                    onDismiss = { globalRestTimerVisible = false },
+                )
+            }
+        }
+
+        item {
+            OutlinedButton(onClick = { exercisePickerVisible = true }, modifier = Modifier.fillMaxWidth().height(42.dp)) {
+                Icon(Icons.Outlined.Add, contentDescription = null)
+                Text(t("Add exercises"), modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = { discardConfirmationVisible = true },
+                    modifier = Modifier.weight(1f).height(42.dp),
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.BookmarkAdd,
-                        contentDescription = t("Save as template", "Zapisz jako szablon"),
-                    )
+                    Icon(Icons.Outlined.Delete, contentDescription = null)
+                    Text(t("Discard workout", "Odrzuć trening"), modifier = Modifier.padding(start = 6.dp))
+                }
+                Button(
+                    onClick = { finishConfirmationVisible = true },
+                    modifier = Modifier.weight(1f).height(42.dp),
+                ) {
+                    Icon(Icons.Outlined.Check, contentDescription = null)
+                    Text(t("Finish workout", "Zakończ trening"), modifier = Modifier.padding(start = 6.dp), maxLines = 1)
                 }
             }
         }
 
-        if (restTimerEnabled && latestLoggedSet != null && !restTimerDismissed) {
-            RestTimerBanner(
-                lastSetCompletedAtEpochMillis = latestLoggedSet.completedAtEpochMillis,
-                offsetSeconds = restTimerOffsetSeconds,
-                onDismiss = { restTimerDismissed = true },
-            )
-        }
-
-        OutlinedButton(onClick = { exercisePickerVisible = true }, modifier = Modifier.fillMaxWidth().height(42.dp)) {
-            Icon(Icons.Outlined.Add, contentDescription = null)
-            Text(t("Add exercises"), modifier = Modifier.padding(start = 8.dp))
-        }
-
-        Button(
-            onClick = { finishConfirmationVisible = true },
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-        ) {
-            Icon(Icons.Outlined.Check, contentDescription = null)
-            Text(t("Finish workout", "Zakończ trening"), modifier = Modifier.padding(start = 8.dp))
-        }
-        TextButton(
-            onClick = { discardConfirmationVisible = true },
-            modifier = Modifier.align(Alignment.End),
-        ) {
-            Icon(Icons.Outlined.Delete, contentDescription = null)
-            Text(t("Discard workout", "Odrzuć trening"), modifier = Modifier.padding(start = 6.dp))
-        }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
             if (activeWorkout.exercises.isEmpty()) {
                 item {
                     Text(
@@ -471,10 +490,11 @@ private fun ActiveWorkoutScreen(
                     onUpdateNotes = onUpdateWorkoutExerciseNotes,
                     onDeleteExercise = onDeleteWorkoutExercise,
                     onShowHistory = onOpenExerciseHistory,
+                    restTimerMode = restTimerMode,
+                    restTimerOffsetSeconds = restTimerOffsetSeconds,
                 )
             }
         }
-    }
 
     if (saveTemplateDialogVisible) {
         SaveWorkoutTemplateDialog(
@@ -536,17 +556,6 @@ private fun RestTimerBanner(
     offsetSeconds: Int,
     onDismiss: () -> Unit,
 ) {
-    val elapsedSeconds by produceState(
-        initialValue = 0L,
-        lastSetCompletedAtEpochMillis,
-        offsetSeconds,
-    ) {
-        while (true) {
-            value = ((System.currentTimeMillis() - lastSetCompletedAtEpochMillis) / 1_000L + offsetSeconds)
-                .coerceAtLeast(0L)
-            delay(1_000L)
-        }
-    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -568,12 +577,28 @@ private fun RestTimerBanner(
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = elapsedSeconds.asTimerText(),
+                text = restTimerText(lastSetCompletedAtEpochMillis, offsetSeconds),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )
         }
     }
+}
+
+@Composable
+private fun restTimerText(lastSetCompletedAtEpochMillis: Long, offsetSeconds: Int): String {
+    val elapsedSeconds by produceState(
+        initialValue = 0L,
+        lastSetCompletedAtEpochMillis,
+        offsetSeconds,
+    ) {
+        while (true) {
+            value = ((System.currentTimeMillis() - lastSetCompletedAtEpochMillis) / 1_000L + offsetSeconds)
+                .coerceAtLeast(0L)
+            delay(1_000L)
+        }
+    }
+    return elapsedSeconds.asTimerText()
 }
 
 private fun Long.asTimerText(): String = "%d:%02d".format(this / 60, this % 60)
@@ -767,12 +792,18 @@ internal fun LoggedExerciseCard(
     onUpdateNotes: (Long, String?) -> Unit,
     onDeleteExercise: (Long) -> Unit,
     onShowHistory: ((Long, String) -> Unit)? = null,
+    restTimerMode: RestTimerMode = RestTimerMode.Off,
+    restTimerOffsetSeconds: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     var editor by remember { mutableStateOf<SetEditor?>(null) }
     var setPendingDeletion by remember { mutableStateOf<LoggedSet?>(null) }
     var editNotesVisible by remember { mutableStateOf(false) }
     var exercisePendingDeletion by remember { mutableStateOf(false) }
+    val latestLoggedSet = exercise.sets
+        .filter { it.completedAtEpochMillis > 0 }
+        .maxByOrNull { it.completedAtEpochMillis }
+    var exerciseRestTimerVisible by remember(latestLoggedSet?.id) { mutableStateOf(true) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -825,6 +856,41 @@ internal fun LoggedExerciseCard(
                     IconButton(onClick = { exercisePendingDeletion = true }, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.Outlined.Delete, contentDescription = t("Remove exercise from workout", "Usuń ćwiczenie z treningu"))
                     }
+                }
+            }
+
+            if (restTimerMode == RestTimerMode.Exercise && latestLoggedSet != null) {
+                val timerText = if (exerciseRestTimerVisible) {
+                    restTimerText(latestLoggedSet.completedAtEpochMillis, restTimerOffsetSeconds)
+                } else {
+                    null
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(
+                        onClick = { exerciseRestTimerVisible = !exerciseRestTimerVisible },
+                        modifier = Modifier.size(32.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Timer,
+                            contentDescription = if (exerciseRestTimerVisible) {
+                                t("Hide rest timer", "Ukryj timer przerwy")
+                            } else {
+                                t("Show rest timer", "Pokaż timer przerwy")
+                            },
+                        )
+                    }
+                    Text(
+                        text = if (timerText != null) {
+                            t("Rest: $timerText", "Przerwa: $timerText")
+                        } else {
+                            t("Rest timer hidden", "Timer przerwy ukryty")
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 

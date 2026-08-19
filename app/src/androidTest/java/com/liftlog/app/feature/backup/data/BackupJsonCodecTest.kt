@@ -9,6 +9,7 @@ import com.liftlog.app.core.database.entity.WorkoutTemplatePlanEntity
 import com.liftlog.app.core.database.model.DatabaseSnapshot
 import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.AppSettings
+import com.liftlog.app.core.model.RestTimerMode
 import com.liftlog.app.feature.backup.domain.BackupSelection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -21,7 +22,7 @@ class BackupJsonCodecTest {
     fun roundTripPreservesRestTimerSettings() {
         val backup = LiftLogBackup(
             exportedAtEpochMillis = 1L,
-            settings = AppSettings(restTimerEnabled = false, restTimerOffsetSeconds = 18),
+            settings = AppSettings(restTimerMode = RestTimerMode.Exercise, restTimerOffsetSeconds = 18),
             snapshot = DatabaseSnapshot(
                 exercises = emptyList(),
                 workoutSessions = emptyList(),
@@ -43,7 +44,7 @@ class BackupJsonCodecTest {
 
         val restored = BackupJsonCodec.decode(BackupJsonCodec.encode(backup))
 
-        assertEquals(false, restored.settings?.restTimerEnabled)
+        assertEquals(RestTimerMode.Exercise, restored.settings?.restTimerMode)
         assertEquals(18, restored.settings?.restTimerOffsetSeconds)
     }
 
@@ -148,7 +149,19 @@ class BackupJsonCodecTest {
         assertEquals(ExerciseCategory.Machine.name, restored.snapshot.exercises.single().category)
         assertTrue(restored.snapshot.workoutTemplates.isEmpty())
         assertEquals(60, restored.settings?.defaultRestSeconds)
-        assertEquals(true, restored.settings?.restTimerEnabled)
+        assertEquals(RestTimerMode.Workout, restored.settings?.restTimerMode)
         assertEquals(0, restored.settings?.restTimerOffsetSeconds)
+    }
+
+    @Test
+    fun legacyTimerSwitchMapsToTheNewTimerMode() {
+        val oldBackup = """
+            {"formatVersion":7,"exportedAtEpochMillis":1,"sections":{"settings":true,"locations":false,"exercises":false,"workoutSessions":false,"workoutExercises":false,"setEntries":false,"workoutTemplates":false},"settings":{"weightUnit":"Kilograms","defaultRestSeconds":60,"restTimerEnabled":false,"restTimerOffsetSeconds":12},"database":{}}
+        """.trimIndent()
+
+        val restored = BackupJsonCodec.decode(oldBackup)
+
+        assertEquals(RestTimerMode.Off, restored.settings?.restTimerMode)
+        assertEquals(12, restored.settings?.restTimerOffsetSeconds)
     }
 }

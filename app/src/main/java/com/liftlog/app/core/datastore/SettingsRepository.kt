@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.liftlog.app.core.model.AppSettings
+import com.liftlog.app.core.model.RestTimerMode
 import com.liftlog.app.core.model.WeightUnit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -29,7 +30,9 @@ class SettingsRepository @Inject constructor(
                 else -> WeightUnit.Kilograms
             },
             defaultRestSeconds = preferences[Keys.DefaultRestSeconds] ?: 90,
-            restTimerEnabled = preferences[Keys.RestTimerEnabled] ?: true,
+            restTimerMode = preferences[Keys.RestTimerMode]
+                ?.let { value -> RestTimerMode.entries.firstOrNull { it.name == value } }
+                ?: if (preferences[Keys.RestTimerEnabled] ?: true) RestTimerMode.Workout else RestTimerMode.Off,
             restTimerOffsetSeconds = preferences[Keys.RestTimerOffsetSeconds] ?: 0,
         )
     }
@@ -42,7 +45,8 @@ class SettingsRepository @Inject constructor(
         context.settingsDataStore.edit { preferences ->
             preferences[Keys.WeightUnit] = settings.weightUnit.name
             preferences[Keys.DefaultRestSeconds] = settings.defaultRestSeconds.coerceIn(0, 600)
-            preferences[Keys.RestTimerEnabled] = settings.restTimerEnabled
+            preferences[Keys.RestTimerMode] = settings.restTimerMode.name
+            preferences[Keys.RestTimerEnabled] = settings.restTimerMode != RestTimerMode.Off
             preferences[Keys.RestTimerOffsetSeconds] = settings.restTimerOffsetSeconds.coerceIn(0, 600)
         }
     }
@@ -59,9 +63,10 @@ class SettingsRepository @Inject constructor(
         }
     }
 
-    suspend fun setRestTimerEnabled(enabled: Boolean) {
+    suspend fun setRestTimerMode(mode: RestTimerMode) {
         context.settingsDataStore.edit { preferences ->
-            preferences[Keys.RestTimerEnabled] = enabled
+            preferences[Keys.RestTimerMode] = mode.name
+            preferences[Keys.RestTimerEnabled] = mode != RestTimerMode.Off
         }
     }
 
@@ -84,6 +89,7 @@ class SettingsRepository @Inject constructor(
         val WeightUnit: Preferences.Key<String> = stringPreferencesKey("weight_unit")
         val DefaultRestSeconds: Preferences.Key<Int> = intPreferencesKey("default_rest_seconds")
         val RestTimerEnabled: Preferences.Key<Boolean> = booleanPreferencesKey("rest_timer_enabled")
+        val RestTimerMode: Preferences.Key<String> = stringPreferencesKey("rest_timer_mode")
         val RestTimerOffsetSeconds: Preferences.Key<Int> = intPreferencesKey("rest_timer_offset_seconds")
         val StarterExercisesSeeded: Preferences.Key<Boolean> = booleanPreferencesKey("starter_exercises_seeded")
     }

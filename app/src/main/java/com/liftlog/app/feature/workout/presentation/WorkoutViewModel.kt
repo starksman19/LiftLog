@@ -9,6 +9,7 @@ import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.core.model.RecentExercisePerformance
 import com.liftlog.app.core.model.WorkoutTemplate
 import com.liftlog.app.core.model.WorkoutPlan
+import com.liftlog.app.core.model.RestTimerMode
 import com.liftlog.app.feature.exercises.domain.AddCustomExerciseUseCase
 import com.liftlog.app.feature.exercises.domain.EnsureStarterExercisesUseCase
 import com.liftlog.app.feature.exercises.domain.ObserveExercisesUseCase
@@ -81,7 +82,7 @@ class WorkoutViewModel @Inject constructor(
     }
         .combine(settingsRepository.settings) { state, settings ->
             state.copy(
-                restTimerEnabled = settings.restTimerEnabled,
+                restTimerMode = settings.restTimerMode,
                 restTimerOffsetSeconds = settings.restTimerOffsetSeconds,
             )
         }
@@ -201,7 +202,7 @@ data class WorkoutUiState(
     val templates: List<WorkoutTemplate> = emptyList(),
     val plans: List<WorkoutPlan> = emptyList(),
     val locations: List<String> = emptyList(),
-    val restTimerEnabled: Boolean = true,
+    val restTimerMode: RestTimerMode = RestTimerMode.Workout,
     val restTimerOffsetSeconds: Int = 0,
     val exerciseHistory: ExerciseHistoryDialogState? = null,
 )

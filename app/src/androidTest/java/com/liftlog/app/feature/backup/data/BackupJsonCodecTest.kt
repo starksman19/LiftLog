@@ -147,5 +147,8 @@ class BackupJsonCodecTest {
 
         assertEquals(ExerciseCategory.Machine.name, restored.snapshot.exercises.single().category)
         assertTrue(restored.snapshot.workoutTemplates.isEmpty())
+        assertEquals(60, restored.settings?.defaultRestSeconds)
+        assertEquals(true, restored.settings?.restTimerEnabled)
+        assertEquals(0, restored.settings?.restTimerOffsetSeconds)
     }
 }

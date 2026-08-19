@@ -7,6 +7,9 @@ import com.liftlog.app.core.util.PolishTextComparator
 import com.liftlog.app.feature.workout.domain.ObserveCompletedWorkoutsUseCase
 import com.liftlog.app.feature.workout.domain.DeleteCompletedWorkoutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,31 +25,34 @@ class WorkoutHistoryViewModel @Inject constructor(
 ) : ViewModel() {
     private val searchQuery = MutableStateFlow("")
     private val gymFilter = MutableStateFlow<String?>(null)
-    private val dateFilter = MutableStateFlow("")
+    private val dateRange = MutableStateFlow(HistoryDateRange(endDate = LocalDate.now().toString()))
     private val sortMode = MutableStateFlow(WorkoutSortMode.NewestFirst)
 
     val uiState: StateFlow<WorkoutHistoryUiState> = combine(
         observeCompletedWorkoutsUseCase(),
         searchQuery,
         gymFilter,
-        dateFilter,
+        dateRange,
         sortMode,
-    ) { workouts, query, selectedGym, dateQuery, currentSortMode ->
+    ) { workouts, query, selectedGym, selectedDateRange, currentSortMode ->
         val gyms = workouts.mapNotNull { it.gymLocation }.distinct().sortedWith(PolishTextComparator)
         WorkoutHistoryUiState(
             searchQuery = query,
             selectedGym = selectedGym,
-            dateFilter = dateQuery,
+            dateRange = selectedDateRange,
             sortMode = currentSortMode,
             gyms = gyms,
             workouts = workouts.filter { workout ->
                 val matchesGym = selectedGym == null || workout.gymLocation.equals(selectedGym, ignoreCase = true)
                 val searchable = listOfNotNull(workout.gymLocation, workout.notes, workout.exerciseNames).joinToString(" ")
-                val dateText = java.time.Instant.ofEpochMilli(workout.finishedAtEpochMillis)
-                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate().toString()
+                val workoutDate = Instant.ofEpochMilli(workout.finishedAtEpochMillis)
+                    .atZone(ZoneId.systemDefault()).toLocalDate()
+                val startDate = selectedDateRange.startDate?.toLocalDateOrNull()
+                val endDate = selectedDateRange.endDate.toLocalDateOrNull()
                 matchesGym &&
                     (query.isBlank() || searchable.contains(query, ignoreCase = true)) &&
-                    (dateQuery.isBlank() || dateText.startsWith(dateQuery))
+                    (startDate == null || !workoutDate.isBefore(startDate)) &&
+                    (endDate == null || !workoutDate.isAfter(endDate))
             }.sortedWith(currentSortMode.comparator),
         )
     }.stateIn(
@@ -63,8 +69,8 @@ class WorkoutHistoryViewModel @Inject constructor(
         gymFilter.value = gym
     }
 
-    fun updateDateFilter(value: String) {
-        dateFilter.value = value
+    fun updateDateRange(value: HistoryDateRange) {
+        dateRange.value = value
     }
 
     fun updateSortMode(value: WorkoutSortMode) {
@@ -79,11 +85,18 @@ class WorkoutHistoryViewModel @Inject constructor(
 data class WorkoutHistoryUiState(
     val searchQuery: String = "",
     val selectedGym: String? = null,
-    val dateFilter: String = "",
+    val dateRange: HistoryDateRange = HistoryDateRange(endDate = LocalDate.now().toString()),
     val sortMode: WorkoutSortMode = WorkoutSortMode.NewestFirst,
     val gyms: List<String> = emptyList(),
     val workouts: List<WorkoutSummary> = emptyList(),
 )
+
+data class HistoryDateRange(
+    val startDate: String? = null,
+    val endDate: String,
+)
+
+private fun String.toLocalDateOrNull(): LocalDate? = runCatching { LocalDate.parse(this) }.getOrNull()
 
 enum class WorkoutSortMode(val comparator: Comparator<WorkoutSummary>) {
     NewestFirst(compareByDescending { it.finishedAtEpochMillis }),

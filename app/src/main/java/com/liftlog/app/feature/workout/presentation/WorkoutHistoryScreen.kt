@@ -66,7 +66,7 @@ fun WorkoutHistoryRoute(
         state = state,
         onBack = onBack,
         onSearchChanged = viewModel::updateSearch,
-        onDateFilterChanged = viewModel::updateDateFilter,
+        onDateRangeChanged = viewModel::updateDateRange,
         onGymSelected = viewModel::selectGym,
         onSortModeChanged = viewModel::updateSortMode,
         onWorkoutSelected = onWorkoutSelected,
@@ -80,7 +80,7 @@ fun WorkoutHistoryScreen(
     state: WorkoutHistoryUiState,
     onBack: () -> Unit,
     onSearchChanged: (String) -> Unit,
-    onDateFilterChanged: (String) -> Unit,
+    onDateRangeChanged: (HistoryDateRange) -> Unit,
     onGymSelected: (String?) -> Unit,
     onSortModeChanged: (WorkoutSortMode) -> Unit,
     onWorkoutSelected: (Long) -> Unit,
@@ -89,7 +89,7 @@ fun WorkoutHistoryScreen(
 ) {
     var workoutPendingDelete by remember { mutableStateOf<WorkoutSummary?>(null) }
     var sortMenuVisible by remember { mutableStateOf(false) }
-    var datePickerVisible by remember { mutableStateOf(false) }
+    var datePickerTarget by remember { mutableStateOf<HistoryDatePickerTarget?>(null) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(state.sortMode) {
@@ -129,17 +129,36 @@ fun WorkoutHistoryScreen(
             }
         }
         item {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = { datePickerVisible = true }, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Outlined.DateRange, contentDescription = null)
-                    Text(
-                        text = state.dateFilter.takeIf { it.isNotBlank() } ?: t("Choose date", "Wybierz datę"),
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(t("Date range", "Zakres dat"), style = MaterialTheme.typography.labelLarge)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { datePickerTarget = HistoryDatePickerTarget.Start },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Outlined.DateRange, contentDescription = null)
+                        Text(
+                            text = t("From: ", "Od: ") + (state.dateRange.startDate ?: "-"),
+                            modifier = Modifier.padding(start = 8.dp),
+                            maxLines = 1,
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { datePickerTarget = HistoryDatePickerTarget.End },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Outlined.DateRange, contentDescription = null)
+                        Text(
+                            text = t("To: ", "Do: ") + state.dateRange.endDate,
+                            modifier = Modifier.padding(start = 8.dp),
+                            maxLines = 1,
+                        )
+                    }
                 }
-                if (state.dateFilter.isNotBlank()) {
-                    IconButton(onClick = { onDateFilterChanged("") }) {
-                        Icon(Icons.Outlined.Delete, contentDescription = t("Clear date filter", "Wyczyść filtr daty"))
+                if (state.dateRange.startDate != null) {
+                    TextButton(onClick = { onDateRangeChanged(state.dateRange.copy(startDate = null)) }) {
+                        Icon(Icons.Outlined.Delete, contentDescription = null)
+                        Text(t("Show full history", "Pokaż całą historię"), modifier = Modifier.padding(start = 8.dp))
                     }
                 }
             }
@@ -177,26 +196,41 @@ fun WorkoutHistoryScreen(
         }
     }
 
-    if (datePickerVisible) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = state.dateFilter.toLocalDateOrNull()?.toUtcStartOfDayMillis(),
-        )
-        DatePickerDialog(
-            onDismissRequest = { datePickerVisible = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { selected ->
-                            onDateFilterChanged(selected.toUtcLocalDate().toString())
-                        }
-                        datePickerVisible = false
-                    },
-                    enabled = datePickerState.selectedDateMillis != null,
-                ) { Text(t("Apply", "Zastosuj")) }
-            },
-            dismissButton = { TextButton(onClick = { datePickerVisible = false }) { Text(t("Cancel")) } },
-        ) {
-            DatePicker(state = datePickerState)
+    datePickerTarget?.let { target ->
+        androidx.compose.runtime.key(target) {
+            val selectedDate = when (target) {
+                HistoryDatePickerTarget.Start -> state.dateRange.startDate
+                HistoryDatePickerTarget.End -> state.dateRange.endDate
+            }
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = selectedDate?.toLocalDateOrNull()?.toUtcStartOfDayMillis(),
+            )
+            DatePickerDialog(
+                onDismissRequest = { datePickerTarget = null },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            datePickerState.selectedDateMillis?.toUtcLocalDate()?.toString()?.let { date ->
+                                val updatedRange = when (target) {
+                                    HistoryDatePickerTarget.Start -> state.dateRange.copy(
+                                        startDate = date,
+                                        endDate = maxOf(date, state.dateRange.endDate),
+                                    )
+                                    HistoryDatePickerTarget.End -> state.dateRange.copy(
+                                        endDate = maxOf(date, state.dateRange.startDate ?: date),
+                                    )
+                                }
+                                onDateRangeChanged(updatedRange)
+                            }
+                            datePickerTarget = null
+                        },
+                        enabled = datePickerState.selectedDateMillis != null,
+                    ) { Text(t("Apply", "Zastosuj")) }
+                },
+                dismissButton = { TextButton(onClick = { datePickerTarget = null }) { Text(t("Cancel")) } },
+            ) {
+                DatePicker(state = datePickerState)
+            }
         }
     }
 
@@ -247,6 +281,8 @@ private fun WorkoutSortMode.label(): String = when (this) {
     WorkoutSortMode.OldestFirst -> t("Oldest first", "Najstarsze najpierw")
     WorkoutSortMode.Location -> t("Location", "Lokalizacja")
 }
+
+private enum class HistoryDatePickerTarget { Start, End }
 
 private fun String.toLocalDateOrNull(): LocalDate? = runCatching { LocalDate.parse(this) }.getOrNull()
 

@@ -137,10 +137,9 @@ fun WorkoutHistoryScreen(
                         modifier = Modifier.weight(1f),
                     ) {
                         Icon(Icons.Outlined.DateRange, contentDescription = null)
-                        Text(
-                            text = t("From: ", "Od: ") + (state.dateRange.startDate ?: "-"),
-                            modifier = Modifier.padding(start = 8.dp),
-                            maxLines = 1,
+                        DateRangeButtonLabel(
+                            label = t("From", "Od"),
+                            date = state.dateRange.startDate,
                         )
                     }
                     OutlinedButton(
@@ -148,10 +147,9 @@ fun WorkoutHistoryScreen(
                         modifier = Modifier.weight(1f),
                     ) {
                         Icon(Icons.Outlined.DateRange, contentDescription = null)
-                        Text(
-                            text = t("To: ", "Do: ") + state.dateRange.endDate,
-                            modifier = Modifier.padding(start = 8.dp),
-                            maxLines = 1,
+                        DateRangeButtonLabel(
+                            label = t("To", "Do"),
+                            date = state.dateRange.endDate,
                         )
                     }
                 }
@@ -247,6 +245,14 @@ fun WorkoutHistoryScreen(
             },
             dismissButton = { TextButton(onClick = { workoutPendingDelete = null }) { Text(t("Cancel")) } },
         )
+    }
+}
+
+@Composable
+private fun DateRangeButtonLabel(label: String, date: String?) {
+    Column(modifier = Modifier.padding(start = 8.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall)
+        Text(date ?: "-", maxLines = 1)
     }
 }
 

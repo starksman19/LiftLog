@@ -18,18 +18,23 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -45,6 +50,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.WorkoutSummary
 import com.liftlog.app.core.ui.localization.t
 import java.text.DateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import java.util.Date
 
 @Composable
@@ -66,6 +74,7 @@ fun WorkoutHistoryRoute(
     )
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutHistoryScreen(
     state: WorkoutHistoryUiState,
@@ -80,6 +89,7 @@ fun WorkoutHistoryScreen(
 ) {
     var workoutPendingDelete by remember { mutableStateOf<WorkoutSummary?>(null) }
     var sortMenuVisible by remember { mutableStateOf(false) }
+    var datePickerVisible by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(state.sortMode) {
@@ -119,13 +129,20 @@ fun WorkoutHistoryScreen(
             }
         }
         item {
-            OutlinedTextField(
-                value = state.dateFilter,
-                onValueChange = onDateFilterChanged,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(t("Date filter (YYYY-MM or YYYY-MM-DD)", "Filtr daty (YYYY-MM lub YYYY-MM-DD)")) },
-                singleLine = true,
-            )
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = { datePickerVisible = true }, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Outlined.DateRange, contentDescription = null)
+                    Text(
+                        text = state.dateFilter.takeIf { it.isNotBlank() } ?: t("Choose date", "Wybierz datę"),
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                if (state.dateFilter.isNotBlank()) {
+                    IconButton(onClick = { onDateFilterChanged("") }) {
+                        Icon(Icons.Outlined.Delete, contentDescription = t("Clear date filter", "Wyczyść filtr daty"))
+                    }
+                }
+            }
         }
         item {
             OutlinedTextField(
@@ -157,6 +174,29 @@ fun WorkoutHistoryScreen(
                     onDelete = { workoutPendingDelete = workout },
                 )
             }
+        }
+    }
+
+    if (datePickerVisible) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = state.dateFilter.toLocalDateOrNull()?.toUtcStartOfDayMillis(),
+        )
+        DatePickerDialog(
+            onDismissRequest = { datePickerVisible = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { selected ->
+                            onDateFilterChanged(selected.toUtcLocalDate().toString())
+                        }
+                        datePickerVisible = false
+                    },
+                    enabled = datePickerState.selectedDateMillis != null,
+                ) { Text(t("Apply", "Zastosuj")) }
+            },
+            dismissButton = { TextButton(onClick = { datePickerVisible = false }) { Text(t("Cancel")) } },
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 
@@ -207,3 +247,11 @@ private fun WorkoutSortMode.label(): String = when (this) {
     WorkoutSortMode.OldestFirst -> t("Oldest first", "Najstarsze najpierw")
     WorkoutSortMode.Location -> t("Location", "Lokalizacja")
 }
+
+private fun String.toLocalDateOrNull(): LocalDate? = runCatching { LocalDate.parse(this) }.getOrNull()
+
+private fun LocalDate.toUtcStartOfDayMillis(): Long =
+    atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+private fun Long.toUtcLocalDate(): LocalDate =
+    Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()

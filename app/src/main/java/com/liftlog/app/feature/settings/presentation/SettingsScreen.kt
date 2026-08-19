@@ -19,6 +19,8 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.IconButton
@@ -32,9 +34,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -419,57 +423,63 @@ private data class TrainingReportDateRange(
     val endDate: LocalDate,
 )
 
+private enum class TrainingReportDateSelection {
+    Start,
+    End,
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TrainingReportExportDialog(
     onDismiss: () -> Unit,
     onConfirm: (TrainingReportDateRange) -> Unit,
 ) {
     val today = remember { LocalDate.now() }
-    var startDateText by remember { mutableStateOf(today.minusMonths(1).toString()) }
-    var endDateText by remember { mutableStateOf(today.toString()) }
-    val startDate = runCatching { LocalDate.parse(startDateText) }.getOrNull()
-    val endDate = runCatching { LocalDate.parse(endDateText) }.getOrNull()
-    val isValid = startDate != null && endDate != null && !endDate.isBefore(startDate)
+    var startDate by remember { mutableStateOf(today.minusMonths(1)) }
+    var dateSelection by remember { mutableStateOf(TrainingReportDateSelection.Start) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(t("Export training report", "Eksportuj raport treningowy")) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    t(
-                        "The Excel file includes summary, workouts, exercises, and sets sheets.",
-                        "Plik Excel zawiera arkusze: podsumowanie, treningi, ćwiczenia i serie.",
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                OutlinedTextField(
-                    value = startDateText,
-                    onValueChange = { startDateText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(t("Start date (YYYY-MM-DD)", "Data od (YYYY-MM-DD)")) },
-                    singleLine = true,
-                    isError = startDateText.isNotBlank() && startDate == null,
-                )
-                OutlinedTextField(
-                    value = endDateText,
-                    onValueChange = { endDateText = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(t("End date (YYYY-MM-DD)", "Data do (YYYY-MM-DD)")) },
-                    singleLine = true,
-                    isError = endDateText.isNotBlank() && (endDate == null || (startDate != null && endDate.isBefore(startDate))),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(TrainingReportDateRange(requireNotNull(startDate), requireNotNull(endDate))) },
-                enabled = isValid,
-            ) { Text(t("Choose file", "Wybierz plik")) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
-    )
+    key(dateSelection) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = when (dateSelection) {
+                TrainingReportDateSelection.Start -> startDate.toUtcStartOfDayMillis()
+                TrainingReportDateSelection.End -> today.toUtcStartOfDayMillis()
+            },
+        )
+        DatePickerDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val selectedDate = pickerState.selectedDateMillis?.toUtcLocalDate() ?: return@TextButton
+                        if (dateSelection == TrainingReportDateSelection.Start) {
+                            startDate = selectedDate
+                            dateSelection = TrainingReportDateSelection.End
+                        } else {
+                            onConfirm(TrainingReportDateRange(startDate, selectedDate.coerceAtLeast(startDate)))
+                        }
+                    },
+                    enabled = pickerState.selectedDateMillis != null,
+                ) {
+                    Text(
+                        when (dateSelection) {
+                            TrainingReportDateSelection.Start -> t("Next", "Dalej")
+                            TrainingReportDateSelection.End -> t("Choose file", "Wybierz plik")
+                        },
+                    )
+                }
+            },
+            dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
+        ) {
+            DatePicker(state = pickerState)
+        }
+    }
 }
+
+private fun LocalDate.toUtcStartOfDayMillis(): Long =
+    atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+
+private fun Long.toUtcLocalDate(): LocalDate =
+    java.time.Instant.ofEpochMilli(this).atZone(java.time.ZoneOffset.UTC).toLocalDate()
 
 @Composable
 private fun SettingsSection(

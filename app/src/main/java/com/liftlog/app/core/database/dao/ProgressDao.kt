@@ -12,8 +12,7 @@ interface ProgressDao {
     @Query(
         """
         SELECT ws.startedAtEpochMillis AS startedAtEpochMillis,
-               COALESCE(SUM(se.weight * se.reps), 0) AS volume,
-               COUNT(se.id) AS setCount
+               COALESCE(SUM(se.weight * se.reps), 0) AS volume
         FROM workout_sessions AS ws
         LEFT JOIN workout_exercises AS we ON we.workoutSessionId = ws.id
         LEFT JOIN set_entries AS se ON se.workoutExerciseId = we.id

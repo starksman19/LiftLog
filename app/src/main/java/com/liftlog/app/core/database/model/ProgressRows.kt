@@ -3,7 +3,6 @@ package com.liftlog.app.core.database.model
 data class SessionVolumeRow(
     val startedAtEpochMillis: Long,
     val volume: Double,
-    val setCount: Int,
 )
 
 data class ExerciseProgressRow(

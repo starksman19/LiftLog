@@ -53,6 +53,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -355,13 +356,22 @@ private fun ActiveWorkoutScreen(
         )
         return
     }
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
+    Column(modifier = modifier.fillMaxSize()) {
+        if (restTimerMode == RestTimerMode.Workout && latestLoggedSet != null && globalRestTimerVisible) {
+            RestTimerBanner(
+                lastSetCompletedAtEpochMillis = latestLoggedSet.completedAtEpochMillis,
+                offsetSeconds = restTimerOffsetSeconds,
+                onDismiss = { globalRestTimerVisible = false },
+                modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
+            )
+        }
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -399,7 +409,7 @@ private fun ActiveWorkoutScreen(
                 }
 
                 Row {
-                    if (restTimerMode == RestTimerMode.Workout && latestLoggedSet != null) {
+                    if (restTimerMode == RestTimerMode.Workout && latestLoggedSet != null && !globalRestTimerVisible) {
                         IconButton(
                             onClick = { globalRestTimerVisible = !globalRestTimerVisible },
                             modifier = Modifier.size(40.dp),
@@ -434,16 +444,6 @@ private fun ActiveWorkoutScreen(
             }
         }
 
-        if (restTimerMode == RestTimerMode.Workout && latestLoggedSet != null && globalRestTimerVisible) {
-            item {
-                RestTimerBanner(
-                    lastSetCompletedAtEpochMillis = latestLoggedSet.completedAtEpochMillis,
-                    offsetSeconds = restTimerOffsetSeconds,
-                    onDismiss = { globalRestTimerVisible = false },
-                )
-            }
-        }
-
         item {
             OutlinedButton(onClick = { exercisePickerVisible = true }, modifier = Modifier.fillMaxWidth().height(42.dp)) {
                 Icon(Icons.Outlined.Add, contentDescription = null)
@@ -455,16 +455,28 @@ private fun ActiveWorkoutScreen(
                 OutlinedButton(
                     onClick = { discardConfirmationVisible = true },
                     modifier = Modifier.weight(1f).height(42.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp),
                 ) {
                     Icon(Icons.Outlined.Delete, contentDescription = null)
-                    Text(t("Discard workout", "Odrzuć trening"), modifier = Modifier.padding(start = 6.dp))
+                    Text(
+                        text = t("Discard workout", "Odrzuć trening"),
+                        modifier = Modifier.padding(start = 6.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 Button(
                     onClick = { finishConfirmationVisible = true },
                     modifier = Modifier.weight(1f).height(42.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp),
                 ) {
                     Icon(Icons.Outlined.Check, contentDescription = null)
-                    Text(t("Finish workout", "Zakończ trening"), modifier = Modifier.padding(start = 6.dp), maxLines = 1)
+                    Text(
+                        text = t("Finish workout", "Zakończ trening"),
+                        modifier = Modifier.padding(start = 6.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
@@ -494,6 +506,7 @@ private fun ActiveWorkoutScreen(
                     restTimerOffsetSeconds = restTimerOffsetSeconds,
                 )
             }
+        }
         }
 
     if (saveTemplateDialogVisible) {
@@ -555,9 +568,10 @@ private fun RestTimerBanner(
     lastSetCompletedAtEpochMillis: Long,
     offsetSeconds: Int,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
     ) {
@@ -803,7 +817,9 @@ internal fun LoggedExerciseCard(
     val latestLoggedSet = exercise.sets
         .filter { it.completedAtEpochMillis > 0 }
         .maxByOrNull { it.completedAtEpochMillis }
-    var exerciseRestTimerVisible by remember(latestLoggedSet?.id) { mutableStateOf(true) }
+    var exerciseRestTimerStartedAtMillis by remember(latestLoggedSet?.id) {
+        mutableStateOf(latestLoggedSet?.completedAtEpochMillis ?: 0L)
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -860,34 +876,25 @@ internal fun LoggedExerciseCard(
             }
 
             if (restTimerMode == RestTimerMode.Exercise && latestLoggedSet != null) {
-                val timerText = if (exerciseRestTimerVisible) {
-                    restTimerText(latestLoggedSet.completedAtEpochMillis, restTimerOffsetSeconds)
-                } else {
-                    null
-                }
+                val timerText = restTimerText(exerciseRestTimerStartedAtMillis, restTimerOffsetSeconds)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(
-                        onClick = { exerciseRestTimerVisible = !exerciseRestTimerVisible },
+                        onClick = { exerciseRestTimerStartedAtMillis = System.currentTimeMillis() },
                         modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             Icons.Outlined.Timer,
-                            contentDescription = if (exerciseRestTimerVisible) {
-                                t("Hide rest timer", "Ukryj timer przerwy")
-                            } else {
-                                t("Show rest timer", "Pokaż timer przerwy")
-                            },
+                            contentDescription = t("Restart rest timer", "Zresetuj timer przerwy"),
                         )
                     }
                     Text(
-                        text = if (timerText != null) {
-                            t("Rest: $timerText", "Przerwa: $timerText")
-                        } else {
-                            t("Rest timer hidden", "Timer przerwy ukryty")
-                        },
+                        text = t(
+                            "Rest: $timerText",
+                            "Przerwa: $timerText",
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

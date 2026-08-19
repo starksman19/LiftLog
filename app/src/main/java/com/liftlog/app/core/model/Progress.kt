@@ -3,7 +3,6 @@ package com.liftlog.app.core.model
 data class SessionVolume(
     val startedAtEpochMillis: Long,
     val volume: Double,
-    val setCount: Int,
 )
 
 data class ExerciseProgress(

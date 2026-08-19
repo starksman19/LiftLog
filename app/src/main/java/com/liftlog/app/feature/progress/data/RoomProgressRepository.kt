@@ -20,7 +20,6 @@ class RoomProgressRepository @Inject constructor(
                 SessionVolume(
                     startedAtEpochMillis = row.startedAtEpochMillis,
                     volume = row.volume,
-                    setCount = row.setCount,
                 )
             }.reversed()
         }

@@ -101,6 +101,8 @@ fun WorkoutRoute(
         onUpdateWorkoutDetails = viewModel::updateWorkoutDetails,
         onUpdateWorkoutExerciseNotes = viewModel::updateWorkoutExerciseNotes,
         onDeleteWorkoutExercise = viewModel::deleteWorkoutExercise,
+        onSetWorkoutTimerVisible = viewModel::setWorkoutTimerVisible,
+        onSetExerciseTimerVisible = viewModel::setExerciseTimerVisible,
         onFinishWorkout = viewModel::finishWorkout,
         onDiscardWorkout = viewModel::discardWorkout,
         onHistory = onHistory,
@@ -124,6 +126,8 @@ fun WorkoutScreen(
     onUpdateWorkoutDetails: (String?, String?) -> Unit,
     onUpdateWorkoutExerciseNotes: (Long, String?) -> Unit,
     onDeleteWorkoutExercise: (Long) -> Unit,
+    onSetWorkoutTimerVisible: (Boolean, Long) -> Unit,
+    onSetExerciseTimerVisible: (Boolean, Long) -> Unit,
     onFinishWorkout: () -> Unit,
     onDiscardWorkout: () -> Unit,
     onHistory: () -> Unit,
@@ -150,6 +154,8 @@ fun WorkoutScreen(
             locations = state.locations,
             restTimerMode = state.restTimerMode,
             restTimerOffsetSeconds = state.restTimerOffsetSeconds,
+            workoutTimerHiddenForSetId = state.workoutTimerHiddenForSetId,
+            exerciseTimerHiddenForSetIds = state.exerciseTimerHiddenForSetIds,
             onSaveActiveWorkoutAsTemplate = onSaveActiveWorkoutAsTemplate,
             onAddExercises = onAddExercises,
             onCreateAndAddExercise = onCreateAndAddExercise,
@@ -160,6 +166,8 @@ fun WorkoutScreen(
             onUpdateWorkoutDetails = onUpdateWorkoutDetails,
             onUpdateWorkoutExerciseNotes = onUpdateWorkoutExerciseNotes,
             onDeleteWorkoutExercise = onDeleteWorkoutExercise,
+            onSetWorkoutTimerVisible = onSetWorkoutTimerVisible,
+            onSetExerciseTimerVisible = onSetExerciseTimerVisible,
             onFinishWorkout = onFinishWorkout,
             onDiscardWorkout = onDiscardWorkout,
             modifier = modifier,
@@ -317,6 +325,8 @@ private fun ActiveWorkoutScreen(
     locations: List<String>,
     restTimerMode: RestTimerMode,
     restTimerOffsetSeconds: Int,
+    workoutTimerHiddenForSetId: Long?,
+    exerciseTimerHiddenForSetIds: Set<Long>,
     onSaveActiveWorkoutAsTemplate: (String) -> Unit,
     onAddExercises: (List<Long>) -> Unit,
     onCreateAndAddExercise: (ExerciseDraft) -> Unit,
@@ -327,6 +337,8 @@ private fun ActiveWorkoutScreen(
     onUpdateWorkoutDetails: (String?, String?) -> Unit,
     onUpdateWorkoutExerciseNotes: (Long, String?) -> Unit,
     onDeleteWorkoutExercise: (Long) -> Unit,
+    onSetWorkoutTimerVisible: (Boolean, Long) -> Unit,
+    onSetExerciseTimerVisible: (Boolean, Long) -> Unit,
     onFinishWorkout: () -> Unit,
     onDiscardWorkout: () -> Unit,
     modifier: Modifier = Modifier,
@@ -341,7 +353,7 @@ private fun ActiveWorkoutScreen(
         .flatMap { it.sets.asSequence() }
         .filter { it.completedAtEpochMillis > 0 }
         .maxByOrNull { it.completedAtEpochMillis }
-    var globalRestTimerVisible by remember(latestLoggedSet?.id) { mutableStateOf(true) }
+    val globalRestTimerVisible = latestLoggedSet?.id != workoutTimerHiddenForSetId
     var globalRestTimerStartedAtMillis by remember(latestLoggedSet?.id) {
         mutableStateOf(latestLoggedSet?.completedAtEpochMillis ?: 0L)
     }
@@ -367,7 +379,7 @@ private fun ActiveWorkoutScreen(
             RestTimerBanner(
                 lastSetCompletedAtEpochMillis = globalRestTimerStartedAtMillis,
                 offsetSeconds = restTimerOffsetSeconds,
-                onDismiss = { globalRestTimerVisible = false },
+                onDismiss = { onSetWorkoutTimerVisible(false, latestLoggedSet.id) },
                 onReset = { globalRestTimerStartedAtMillis = System.currentTimeMillis() },
                 modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
             )
@@ -418,7 +430,7 @@ private fun ActiveWorkoutScreen(
                 Row {
                     if (restTimerMode == RestTimerMode.Workout && latestLoggedSet != null && !globalRestTimerVisible) {
                         IconButton(
-                            onClick = { globalRestTimerVisible = !globalRestTimerVisible },
+                            onClick = { onSetWorkoutTimerVisible(true, latestLoggedSet.id) },
                             modifier = Modifier.size(40.dp),
                         ) {
                             Icon(
@@ -511,6 +523,10 @@ private fun ActiveWorkoutScreen(
                     onShowHistory = onOpenExerciseHistory,
                     restTimerMode = restTimerMode,
                     restTimerOffsetSeconds = restTimerOffsetSeconds,
+                    restTimerVisible = exercise.sets.lastOrNull()?.id !in exerciseTimerHiddenForSetIds,
+                    onSetRestTimerVisible = { visible, latestSetId ->
+                        onSetExerciseTimerVisible(visible, latestSetId)
+                    },
                 )
             }
         }
@@ -826,6 +842,8 @@ internal fun LoggedExerciseCard(
     onShowHistory: ((Long, String) -> Unit)? = null,
     restTimerMode: RestTimerMode = RestTimerMode.Off,
     restTimerOffsetSeconds: Int = 0,
+    restTimerVisible: Boolean = true,
+    onSetRestTimerVisible: (Boolean, Long) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     var editor by remember { mutableStateOf<SetEditor?>(null) }
@@ -838,7 +856,6 @@ internal fun LoggedExerciseCard(
     var exerciseRestTimerStartedAtMillis by remember(latestLoggedSet?.id) {
         mutableStateOf(latestLoggedSet?.completedAtEpochMillis ?: 0L)
     }
-    var exerciseRestTimerVisible by remember(latestLoggedSet?.id) { mutableStateOf(true) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -895,7 +912,7 @@ internal fun LoggedExerciseCard(
             }
 
             if (restTimerMode == RestTimerMode.Exercise && latestLoggedSet != null) {
-                val timerText = if (exerciseRestTimerVisible) {
+                val timerText = if (restTimerVisible) {
                     restTimerText(exerciseRestTimerStartedAtMillis, restTimerOffsetSeconds)
                 } else {
                     null
@@ -905,12 +922,12 @@ internal fun LoggedExerciseCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(
-                        onClick = { exerciseRestTimerVisible = !exerciseRestTimerVisible },
+                        onClick = { onSetRestTimerVisible(!restTimerVisible, latestLoggedSet.id) },
                         modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             Icons.Outlined.Timer,
-                            contentDescription = if (exerciseRestTimerVisible) {
+                            contentDescription = if (restTimerVisible) {
                                 t("Hide rest timer", "Ukryj timer przerwy")
                             } else {
                                 t("Show rest timer", "Pokaż timer przerwy")
@@ -1268,6 +1285,8 @@ private fun WorkoutScreenPreview() {
             onUpdateWorkoutDetails = { _, _ -> },
             onUpdateWorkoutExerciseNotes = { _, _ -> },
             onDeleteWorkoutExercise = {},
+            onSetWorkoutTimerVisible = { _, _ -> },
+            onSetExerciseTimerVisible = { _, _ -> },
             onFinishWorkout = {},
             onDiscardWorkout = {},
             onHistory = {},

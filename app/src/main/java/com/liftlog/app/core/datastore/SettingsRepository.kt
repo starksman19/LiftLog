@@ -5,7 +5,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.liftlog.app.core.model.AppSettings
 import com.liftlog.app.core.model.RestTimerMode
@@ -38,6 +40,16 @@ class SettingsRepository @Inject constructor(
     }
 
     val weightUnit: Flow<WeightUnit> = settings.map { it.weightUnit }
+
+    val restTimerVisibility: Flow<RestTimerVisibility> = context.settingsDataStore.data.map { preferences ->
+        RestTimerVisibility(
+            workoutHiddenForSetId = preferences[Keys.WorkoutTimerHiddenForSetId],
+            exerciseHiddenForSetIds = preferences[Keys.ExerciseTimerHiddenForSetIds]
+                .orEmpty()
+                .mapNotNull(String::toLongOrNull)
+                .toSet(),
+        )
+    }
 
     suspend fun snapshot(): AppSettings = settings.first()
 
@@ -76,6 +88,23 @@ class SettingsRepository @Inject constructor(
         }
     }
 
+    suspend fun setWorkoutTimerVisible(visible: Boolean, latestSetId: Long) {
+        context.settingsDataStore.edit { preferences ->
+            if (visible) preferences.remove(Keys.WorkoutTimerHiddenForSetId)
+            else preferences[Keys.WorkoutTimerHiddenForSetId] = latestSetId
+        }
+    }
+
+    suspend fun setExerciseTimerVisible(visible: Boolean, latestSetId: Long) {
+        context.settingsDataStore.edit { preferences ->
+            val hiddenIds = preferences[Keys.ExerciseTimerHiddenForSetIds]
+                .orEmpty()
+                .toMutableSet()
+            if (visible) hiddenIds.remove(latestSetId.toString()) else hiddenIds.add(latestSetId.toString())
+            preferences[Keys.ExerciseTimerHiddenForSetIds] = hiddenIds
+        }
+    }
+
     suspend fun areStarterExercisesSeeded(): Boolean =
         context.settingsDataStore.data.first()[Keys.StarterExercisesSeeded] ?: false
 
@@ -91,6 +120,13 @@ class SettingsRepository @Inject constructor(
         val RestTimerEnabled: Preferences.Key<Boolean> = booleanPreferencesKey("rest_timer_enabled")
         val RestTimerMode: Preferences.Key<String> = stringPreferencesKey("rest_timer_mode")
         val RestTimerOffsetSeconds: Preferences.Key<Int> = intPreferencesKey("rest_timer_offset_seconds")
+        val WorkoutTimerHiddenForSetId: Preferences.Key<Long> = longPreferencesKey("workout_timer_hidden_for_set_id")
+        val ExerciseTimerHiddenForSetIds: Preferences.Key<Set<String>> = stringSetPreferencesKey("exercise_timer_hidden_for_set_ids")
         val StarterExercisesSeeded: Preferences.Key<Boolean> = booleanPreferencesKey("starter_exercises_seeded")
     }
 }
+
+data class RestTimerVisibility(
+    val workoutHiddenForSetId: Long? = null,
+    val exerciseHiddenForSetIds: Set<Long> = emptySet(),
+)

@@ -142,6 +142,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { gymLocationRepository.rename(oldName, newName.trim()) }
     }
 
+    fun addLocation(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch { gymLocationRepository.add(name.trim()) }
+    }
+
     fun deleteLocation(name: String) {
         viewModelScope.launch { gymLocationRepository.delete(name) }
     }

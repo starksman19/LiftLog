@@ -60,7 +60,7 @@ class WorkoutViewModel @Inject constructor(
     private val updateActiveWorkoutDetailsUseCase: UpdateActiveWorkoutDetailsUseCase,
     private val updateWorkoutExerciseNotesUseCase: UpdateWorkoutExerciseNotesUseCase,
     private val deleteWorkoutExerciseUseCase: DeleteWorkoutExerciseUseCase,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
     gymLocationRepository: GymLocationRepository,
 ) : ViewModel() {
     private val exerciseHistory = MutableStateFlow<ExerciseHistoryDialogState?>(null)
@@ -84,6 +84,12 @@ class WorkoutViewModel @Inject constructor(
             state.copy(
                 restTimerMode = settings.restTimerMode,
                 restTimerOffsetSeconds = settings.restTimerOffsetSeconds,
+            )
+        }
+        .combine(settingsRepository.restTimerVisibility) { state, visibility ->
+            state.copy(
+                workoutTimerHiddenForSetId = visibility.workoutHiddenForSetId,
+                exerciseTimerHiddenForSetIds = visibility.exerciseHiddenForSetIds,
             )
         }
         .combine(exerciseHistory) { state, history -> state.copy(exerciseHistory = history) }
@@ -183,6 +189,14 @@ class WorkoutViewModel @Inject constructor(
         viewModelScope.launch { deleteWorkoutExerciseUseCase(workoutExerciseId) }
     }
 
+    fun setWorkoutTimerVisible(visible: Boolean, latestSetId: Long) {
+        viewModelScope.launch { settingsRepository.setWorkoutTimerVisible(visible, latestSetId) }
+    }
+
+    fun setExerciseTimerVisible(visible: Boolean, latestSetId: Long) {
+        viewModelScope.launch { settingsRepository.setExerciseTimerVisible(visible, latestSetId) }
+    }
+
     fun finishWorkout() {
         viewModelScope.launch {
             finishWorkoutUseCase()
@@ -204,6 +218,8 @@ data class WorkoutUiState(
     val locations: List<String> = emptyList(),
     val restTimerMode: RestTimerMode = RestTimerMode.Workout,
     val restTimerOffsetSeconds: Int = 0,
+    val workoutTimerHiddenForSetId: Long? = null,
+    val exerciseTimerHiddenForSetIds: Set<Long> = emptySet(),
     val exerciseHistory: ExerciseHistoryDialogState? = null,
 )
 

@@ -35,16 +35,24 @@ class ExerciseListViewModel @Inject constructor(
     private val query = MutableStateFlow("")
     private val sortMode = MutableStateFlow(ExerciseSortMode.NameAscending)
 
-    val uiState: StateFlow<ExerciseListUiState> = combine(query, sortMode) { currentQuery, currentSortMode ->
+    private val visibleExercises: StateFlow<List<Exercise>> = combine(query, sortMode) { currentQuery, currentSortMode ->
         currentQuery to currentSortMode
     }.flatMapLatest { (currentQuery, currentSortMode) ->
         observeExercisesUseCase(currentQuery).map { exercises ->
-            ExerciseListUiState(
-                searchQuery = currentQuery,
-                sortMode = currentSortMode,
-                exercises = exercises.sortedWith(currentSortMode.comparator),
-            )
+            exercises.sortedWith(currentSortMode.comparator)
         }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList(),
+    )
+
+    val uiState: StateFlow<ExerciseListUiState> = combine(query, sortMode, visibleExercises) { currentQuery, currentSortMode, exercises ->
+        ExerciseListUiState(
+            searchQuery = currentQuery,
+            sortMode = currentSortMode,
+            exercises = exercises,
+        )
     }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

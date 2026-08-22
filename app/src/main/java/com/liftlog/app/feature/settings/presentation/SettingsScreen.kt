@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.FileUpload
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -73,6 +74,7 @@ fun SettingsRoute(
         onImport = viewModel::importFrom,
         onDismissImportPreview = viewModel::dismissImportPreview,
         onMessageShown = viewModel::clearMessage,
+        onAddLocation = viewModel::addLocation,
         onRenameLocation = viewModel::renameLocation,
         onDeleteLocation = viewModel::deleteLocation,
     )
@@ -92,6 +94,7 @@ fun SettingsScreen(
     onImport: (android.net.Uri) -> Unit,
     onDismissImportPreview: () -> Unit,
     onMessageShown: () -> Unit,
+    onAddLocation: (String) -> Unit,
     onRenameLocation: (String, String) -> Unit,
     onDeleteLocation: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -105,6 +108,7 @@ fun SettingsScreen(
     }
     var locationPendingEdit by remember { mutableStateOf<String?>(null) }
     var locationPendingDelete by remember { mutableStateOf<String?>(null) }
+    var addLocationDialogVisible by remember { mutableStateOf(false) }
     var restTimerOffsetText by remember(state.settings.restTimerOffsetSeconds) {
         mutableStateOf(state.settings.restTimerOffsetSeconds.toString())
     }
@@ -227,9 +231,14 @@ fun SettingsScreen(
                     )
                 }
             }
-            if (state.locations.isNotEmpty()) {
-                item {
-                    SettingsSection(title = t("Gym locations", "Lokalizacje siłowni")) {
+            item {
+                SettingsSection(title = t("Gym locations", "Lokalizacje siłowni")) {
+                    if (state.locations.isEmpty()) {
+                        Text(
+                            t("No locations yet.", "Brak zapisanych lokalizacji."),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
                         state.locations.forEach { location ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -247,6 +256,13 @@ fun SettingsScreen(
                                 }
                             }
                         }
+                    }
+                    OutlinedButton(
+                        onClick = { addLocationDialogVisible = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        androidx.compose.material3.Icon(Icons.Outlined.Add, contentDescription = null)
+                        Text(t("Add location"), modifier = Modifier.padding(start = 8.dp))
                     }
                 }
             }
@@ -353,6 +369,15 @@ fun SettingsScreen(
             },
         )
     }
+    if (addLocationDialogVisible) {
+        NewLocationDialog(
+            onDismiss = { addLocationDialogVisible = false },
+            onSave = { name ->
+                onAddLocation(name)
+                addLocationDialogVisible = false
+            },
+        )
+    }
     locationPendingDelete?.let { name ->
         AlertDialog(
             onDismissRequest = { locationPendingDelete = null },
@@ -380,6 +405,28 @@ private fun EditLocationDialog(
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(t("Location name")) }, singleLine = true)
         },
         confirmButton = { TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text(t("Save")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
+    )
+}
+
+@Composable
+private fun NewLocationDialog(
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(t("New location")) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text(t("Location name")) },
+                singleLine = true,
+            )
+        },
+        confirmButton = { TextButton(onClick = { onSave(name) }, enabled = name.isNotBlank()) { Text(t("Add")) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(t("Cancel")) } },
     )
 }

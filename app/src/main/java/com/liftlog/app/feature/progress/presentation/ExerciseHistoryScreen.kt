@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -40,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.ui.localization.t
+import com.liftlog.app.core.util.toExerciseImageUris
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
@@ -169,14 +172,15 @@ private fun ExerciseInformationCard(
     exercise: com.liftlog.app.core.model.Exercise,
     onOpenVideo: (String) -> Unit,
 ) {
-    val image = androidx.compose.runtime.remember(exercise.imageUri) {
+    val images = androidx.compose.runtime.remember(exercise.imageUri) {
         exercise.imageUri
-            ?.substringAfter("base64,", missingDelimiterValue = "")
-            ?.takeIf { it.isNotEmpty() }
-            ?.let { encoded ->
+            .toExerciseImageUris()
+            .mapNotNull { imageUri ->
                 runCatching {
+                    val encoded = imageUri.substringAfter("base64,", missingDelimiterValue = "")
+                    require(encoded.isNotEmpty())
                     val bytes = Base64.decode(encoded, Base64.DEFAULT)
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+                    checkNotNull(BitmapFactory.decodeByteArray(bytes, 0, bytes.size)).asImageBitmap()
                 }
                     .getOrNull()
             }
@@ -202,13 +206,17 @@ private fun ExerciseInformationCard(
                     },
                 ),
             )
-            image?.let {
-                Image(
-                    bitmap = it,
-                    contentDescription = t("Exercise photo", "Zdjęcie ćwiczenia"),
-                    modifier = Modifier.fillMaxWidth().height(180.dp),
-                    contentScale = ContentScale.Crop,
-                )
+            if (images.isNotEmpty()) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(images) { image ->
+                        Image(
+                            bitmap = image,
+                            contentDescription = t("Exercise photo", "Zdjęcie ćwiczenia"),
+                            modifier = Modifier.width(240.dp).height(180.dp),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                }
             }
             exercise.youTubeUrl?.let { link ->
                 IconButton(onClick = { onOpenVideo(link) }) {

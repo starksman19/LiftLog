@@ -10,6 +10,8 @@ import com.liftlog.app.core.database.model.DatabaseSnapshot
 import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.AppSettings
 import com.liftlog.app.core.model.RestTimerMode
+import com.liftlog.app.core.util.toExerciseImageStorageValue
+import com.liftlog.app.core.util.toExerciseImageUris
 import com.liftlog.app.feature.backup.domain.BackupSelection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -131,6 +133,49 @@ class BackupJsonCodecTest {
         val restored = BackupJsonCodec.decode(BackupJsonCodec.encode(backup))
 
         assertEquals(ExerciseCategory.Timed.name, restored.snapshot.exercises.single().category)
+    }
+
+    @Test
+    fun roundTripPreservesMultipleExercisePhotos() {
+        val images = listOf(
+            "data:image/jpeg;base64,AAAA",
+            "data:image/jpeg;base64,BBBB",
+        )
+        val backup = LiftLogBackup(
+            exportedAtEpochMillis = 1L,
+            settings = null,
+            selection = BackupSelection(
+                settings = false,
+                locations = false,
+                exercises = true,
+                workoutSessions = false,
+                workoutExercises = false,
+                setEntries = false,
+                workoutTemplates = false,
+            ),
+            snapshot = DatabaseSnapshot(
+                exercises = listOf(
+                    ExerciseEntity(
+                        id = 1L,
+                        name = "Plank",
+                        primaryMuscle = "Core",
+                        equipment = "Mat",
+                        category = ExerciseCategory.Timed.name,
+                        imageUri = images.toExerciseImageStorageValue(),
+                        createdAtEpochMillis = 1L,
+                    ),
+                ),
+                workoutSessions = emptyList(),
+                workoutExercises = emptyList(),
+                setEntries = emptyList(),
+                workoutTemplates = emptyList(),
+                workoutTemplateExercises = emptyList(),
+            ),
+        )
+
+        val restored = BackupJsonCodec.decode(BackupJsonCodec.encode(backup))
+
+        assertEquals(images, restored.snapshot.exercises.single().imageUri.toExerciseImageUris())
     }
 
     @Test

@@ -5,6 +5,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.util.Base64
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,9 +17,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -27,6 +31,8 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +57,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -68,6 +77,8 @@ import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.ExerciseDraft
 import com.liftlog.app.core.ui.theme.LiftLogTheme
 import com.liftlog.app.core.ui.localization.t
+import com.liftlog.app.core.util.toExerciseImageStorageValue
+import com.liftlog.app.core.util.toExerciseImageUris
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -110,8 +121,12 @@ fun ExerciseListScreen(
     var sortMenuVisible by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
+    var previousSortMode by remember { mutableStateOf<ExerciseSortMode?>(null) }
     LaunchedEffect(state.sortMode) {
-        listState.scrollToItem(0)
+        if (previousSortMode != null && previousSortMode != state.sortMode) {
+            listState.scrollToItem(0)
+        }
+        previousSortMode = state.sortMode
     }
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -244,7 +259,7 @@ internal fun CustomExerciseDialog(
     var equipment by remember { mutableStateOf(exercise?.equipment.orEmpty()) }
     var category by remember { mutableStateOf(exercise?.category ?: ExerciseCategory.FreeWeights) }
     var youTubeUrl by remember { mutableStateOf(exercise?.youTubeUrl.orEmpty()) }
-    var imageUri by remember { mutableStateOf(exercise?.imageUri) }
+    var imageUris by remember { mutableStateOf(exercise?.imageUri.toExerciseImageUris()) }
     var imageError by remember { mutableStateOf<String?>(null) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
@@ -262,7 +277,7 @@ internal fun CustomExerciseDialog(
                 imageError = error.message ?: "Unable to add the selected photo."
                 null
             }
-            imageUri = embeddedImage
+            embeddedImage?.let { imageUri -> imageUris = imageUris + imageUri }
         }
     }
     val isValid = name.isNotBlank()
@@ -336,12 +351,28 @@ internal fun CustomExerciseDialog(
                 ) {
                     Icon(Icons.Outlined.Image, contentDescription = null)
                     Text(
-                        text = t(if (imageUri == null) "Add photo" else "Photo selected"),
+                        text = if (imageUris.isEmpty()) t("Add photo") else t("Add another photo", "Dodaj kolejne zdjęcie"),
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }
-                if (imageUri != null) {
-                    TextButton(onClick = { imageUri = null }) { Text(t("Remove photo")) }
+                if (imageUris.isNotEmpty()) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(imageUris, key = { imageUri -> imageUri }) { imageUri ->
+                            Box(modifier = Modifier.size(76.dp)) {
+                                ExerciseImageThumbnail(
+                                    imageStorage = imageUri,
+                                    contentDescription = t("Exercise photo", "Zdjęcie ćwiczenia"),
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                                IconButton(
+                                    onClick = { imageUris = imageUris - imageUri },
+                                    modifier = Modifier.align(Alignment.TopEnd).size(32.dp),
+                                ) {
+                                    Icon(Icons.Outlined.Close, contentDescription = t("Remove photo"))
+                                }
+                            }
+                        }
+                    }
                 }
                 imageError?.let { error ->
                     Text(
@@ -363,7 +394,7 @@ internal fun CustomExerciseDialog(
                             category = category,
                             gymLocation = null,
                             youTubeUrl = youTubeUrl,
-                            imageUri = imageUri,
+                            imageUri = imageUris.toExerciseImageStorageValue(),
                         ),
                     )
                 },
@@ -482,8 +513,13 @@ private fun ExerciseCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            ExerciseImageThumbnail(
+                imageStorage = exercise.imageUri,
+                contentDescription = t("Exercise photo", "Zdjęcie ćwiczenia"),
+                modifier = Modifier.size(56.dp),
+            )
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).padding(start = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
@@ -520,6 +556,48 @@ private fun ExerciseCard(
         }
     }
 }
+
+@Composable
+private fun ExerciseImageThumbnail(
+    imageStorage: String?,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    val image = remember(imageStorage) {
+        imageStorage
+            .toExerciseImageUris()
+            .firstOrNull()
+            ?.toImageBitmapOrNull()
+    }
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (image != null) {
+            Image(
+                bitmap = image,
+                contentDescription = contentDescription,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Outlined.FitnessCenter,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
+    }
+}
+
+private fun String.toImageBitmapOrNull() = runCatching {
+    val encoded = substringAfter("base64,", missingDelimiterValue = "")
+    require(encoded.isNotEmpty())
+    val bytes = Base64.decode(encoded, Base64.DEFAULT)
+    checkNotNull(BitmapFactory.decodeByteArray(bytes, 0, bytes.size)).asImageBitmap()
+}.getOrNull()
 
 @Preview
 @Composable

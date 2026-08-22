@@ -8,6 +8,7 @@ data class SessionVolumeRow(
 data class ExerciseProgressRow(
     val exerciseId: Long,
     val name: String,
+    val category: String,
     val lastPerformedAtEpochMillis: Long,
     val maxWeight: Double,
     val maxReps: Int,

@@ -1,6 +1,7 @@
 package com.liftlog.app.feature.progress.data
 
 import com.liftlog.app.core.database.dao.ProgressDao
+import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.ExerciseProgress
 import com.liftlog.app.core.model.SessionVolume
 import com.liftlog.app.core.model.HistoricalSet
@@ -31,6 +32,7 @@ class RoomProgressRepository @Inject constructor(
                 ExerciseProgress(
                     exerciseId = row.exerciseId,
                     name = row.name,
+                    category = ExerciseCategory.valueOf(row.category),
                     lastPerformedAtEpochMillis = row.lastPerformedAtEpochMillis,
                     maxWeight = row.maxWeight,
                     maxReps = row.maxReps,

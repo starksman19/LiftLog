@@ -28,6 +28,7 @@ interface ProgressDao {
         """
         SELECT e.id AS exerciseId,
                e.name AS name,
+               e.category AS category,
                MAX(ws.finishedAtEpochMillis) AS lastPerformedAtEpochMillis,
                MAX(se.weight) AS maxWeight,
                MAX(se.reps) AS maxReps,

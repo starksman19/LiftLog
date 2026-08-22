@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -53,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -306,12 +308,14 @@ internal fun CustomExerciseDialog(
                         FilterChip(
                             selected = category == option,
                             onClick = { category = option },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).height(56.dp),
                             label = {
                                 Text(
                                     text = option.localizedLabel(),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Clip,
+                                    textAlign = TextAlign.Center,
                                 )
                             },
                         )

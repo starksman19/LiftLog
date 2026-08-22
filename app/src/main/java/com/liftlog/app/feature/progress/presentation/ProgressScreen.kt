@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.ExerciseProgress
+import com.liftlog.app.core.model.ExerciseCategory
 import com.liftlog.app.core.model.SessionVolume
 import com.liftlog.app.core.ui.localization.t
 import java.text.DateFormat
@@ -367,7 +368,10 @@ private fun ExerciseProgressCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ProgressMetric(t("Best weight", "Najlepszy ciężar"), "${exercise.maxWeight.compact()} kg")
                 Spacer(modifier = Modifier.width(20.dp))
-                ProgressMetric(t("Best reps", "Najwięcej powtórzeń"), exercise.maxReps.toString())
+                ProgressMetric(
+                    if (exercise.category == ExerciseCategory.Timed) t("Best time", "Najlepszy czas") else t("Best reps", "Najwięcej powtórzeń"),
+                    if (exercise.category == ExerciseCategory.Timed) "${exercise.maxReps} ${t("seconds")}" else exercise.maxReps.toString(),
+                )
                 Spacer(modifier = Modifier.width(20.dp))
                 ProgressMetric(t("Workouts", "Treningi"), exercise.workoutCount.toString())
             }

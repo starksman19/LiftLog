@@ -311,11 +311,13 @@ internal fun CustomExerciseDialog(
                             modifier = Modifier.weight(1f).height(56.dp),
                             label = {
                                 Text(
-                                    text = option.localizedLabel(),
+                                    text = option.choiceLabel(),
                                     modifier = Modifier.fillMaxWidth(),
                                     maxLines = 2,
+                                    softWrap = false,
                                     overflow = TextOverflow.Clip,
                                     textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.labelSmall,
                                 )
                             },
                         )
@@ -379,6 +381,13 @@ private fun ExerciseCategory.localizedLabel(): String = when (this) {
     ExerciseCategory.FreeWeights -> t("Free weights")
     ExerciseCategory.Machine -> t("Machine")
     ExerciseCategory.Timed -> t("Timed")
+}
+
+@Composable
+private fun ExerciseCategory.choiceLabel(): String = when (this) {
+    ExerciseCategory.FreeWeights -> t("Free\nweights", "Wolne\nciężary")
+    ExerciseCategory.Machine -> t("Machine", "Maszyna")
+    ExerciseCategory.Timed -> t("Timed", "Na czas")
 }
 
 @Composable

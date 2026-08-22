@@ -74,6 +74,14 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setRestTimerOffsetSeconds(seconds) }
     }
 
+    fun setRestTimerNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setRestTimerNotificationsEnabled(enabled) }
+    }
+
+    fun setRestTimerBubbleEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setRestTimerBubbleEnabled(enabled) }
+    }
+
     fun setLanguage(language: AppLanguage) {
         AppLanguageState.set(language)
         this.language.value = language

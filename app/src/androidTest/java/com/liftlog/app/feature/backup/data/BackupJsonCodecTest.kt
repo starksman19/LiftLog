@@ -24,7 +24,12 @@ class BackupJsonCodecTest {
     fun roundTripPreservesRestTimerSettings() {
         val backup = LiftLogBackup(
             exportedAtEpochMillis = 1L,
-            settings = AppSettings(restTimerMode = RestTimerMode.Exercise, restTimerOffsetSeconds = 18),
+            settings = AppSettings(
+                restTimerMode = RestTimerMode.Exercise,
+                restTimerOffsetSeconds = 18,
+                restTimerNotificationsEnabled = true,
+                restTimerBubbleEnabled = false,
+            ),
             snapshot = DatabaseSnapshot(
                 exercises = emptyList(),
                 workoutSessions = emptyList(),
@@ -48,6 +53,8 @@ class BackupJsonCodecTest {
 
         assertEquals(RestTimerMode.Exercise, restored.settings?.restTimerMode)
         assertEquals(18, restored.settings?.restTimerOffsetSeconds)
+        assertEquals(true, restored.settings?.restTimerNotificationsEnabled)
+        assertEquals(false, restored.settings?.restTimerBubbleEnabled)
     }
 
     @Test

@@ -1,5 +1,8 @@
 package com.liftlog.app.feature.settings.presentation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +36,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -44,10 +48,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liftlog.app.core.model.WeightUnit
 import com.liftlog.app.core.model.AppLanguage
@@ -62,11 +68,29 @@ fun SettingsRoute(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = viewModel::setRestTimerNotificationsEnabled,
+    )
     SettingsScreen(
         state = state,
         onWeightUnitChanged = viewModel::setWeightUnit,
         onRestTimerModeChanged = viewModel::setRestTimerMode,
         onRestTimerOffsetChanged = viewModel::setRestTimerOffsetSeconds,
+        onRestTimerNotificationsChanged = { enabled ->
+            if (!enabled) {
+                viewModel.setRestTimerNotificationsEnabled(false)
+            } else if (
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            ) {
+                viewModel.setRestTimerNotificationsEnabled(true)
+            } else {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        },
+        onRestTimerBubbleChanged = viewModel::setRestTimerBubbleEnabled,
         onLanguageChanged = viewModel::setLanguage,
         onExport = viewModel::exportTo,
         onExportTrainingReport = viewModel::exportTrainingReportTo,
@@ -87,6 +111,8 @@ fun SettingsScreen(
     onWeightUnitChanged: (WeightUnit) -> Unit,
     onRestTimerModeChanged: (RestTimerMode) -> Unit,
     onRestTimerOffsetChanged: (Int) -> Unit,
+    onRestTimerNotificationsChanged: (Boolean) -> Unit,
+    onRestTimerBubbleChanged: (Boolean) -> Unit,
     onLanguageChanged: (AppLanguage) -> Unit,
     onExport: (android.net.Uri, BackupSelection) -> Unit,
     onExportTrainingReport: (android.net.Uri, LocalDate, LocalDate) -> Unit,
@@ -229,6 +255,50 @@ fun SettingsScreen(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(t("System rest timer", "Systemowy timer przerwy"))
+                            Text(
+                                t(
+                                    "Show it after minimizing LiftLog.",
+                                    "Pokaż po zminimalizowaniu LiftLog.",
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = state.settings.restTimerNotificationsEnabled,
+                            onCheckedChange = onRestTimerNotificationsChanged,
+                            enabled = state.settings.restTimerMode == RestTimerMode.Workout,
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(t("Floating timer bubble", "Pływający dymek timera"))
+                            Text(
+                                t(
+                                    "The notification stays in the panel when the bubble is hidden.",
+                                    "Po ukryciu dymka powiadomienie zostaje w panelu.",
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = state.settings.restTimerBubbleEnabled,
+                            onCheckedChange = onRestTimerBubbleChanged,
+                            enabled = state.settings.restTimerNotificationsEnabled && state.settings.restTimerMode == RestTimerMode.Workout,
+                        )
+                    }
                 }
             }
             item {

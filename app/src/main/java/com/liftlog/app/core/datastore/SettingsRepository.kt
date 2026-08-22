@@ -36,6 +36,8 @@ class SettingsRepository @Inject constructor(
                 ?.let { value -> RestTimerMode.entries.firstOrNull { it.name == value } }
                 ?: if (preferences[Keys.RestTimerEnabled] ?: true) RestTimerMode.Workout else RestTimerMode.Off,
             restTimerOffsetSeconds = preferences[Keys.RestTimerOffsetSeconds] ?: 0,
+            restTimerNotificationsEnabled = preferences[Keys.RestTimerNotificationsEnabled] ?: false,
+            restTimerBubbleEnabled = preferences[Keys.RestTimerBubbleEnabled] ?: true,
         )
     }
 
@@ -60,6 +62,8 @@ class SettingsRepository @Inject constructor(
             preferences[Keys.RestTimerMode] = settings.restTimerMode.name
             preferences[Keys.RestTimerEnabled] = settings.restTimerMode != RestTimerMode.Off
             preferences[Keys.RestTimerOffsetSeconds] = settings.restTimerOffsetSeconds.coerceIn(0, 600)
+            preferences[Keys.RestTimerNotificationsEnabled] = settings.restTimerNotificationsEnabled
+            preferences[Keys.RestTimerBubbleEnabled] = settings.restTimerBubbleEnabled
         }
     }
 
@@ -85,6 +89,18 @@ class SettingsRepository @Inject constructor(
     suspend fun setRestTimerOffsetSeconds(seconds: Int) {
         context.settingsDataStore.edit { preferences ->
             preferences[Keys.RestTimerOffsetSeconds] = seconds.coerceIn(0, 600)
+        }
+    }
+
+    suspend fun setRestTimerNotificationsEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[Keys.RestTimerNotificationsEnabled] = enabled
+        }
+    }
+
+    suspend fun setRestTimerBubbleEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[Keys.RestTimerBubbleEnabled] = enabled
         }
     }
 
@@ -120,6 +136,8 @@ class SettingsRepository @Inject constructor(
         val RestTimerEnabled: Preferences.Key<Boolean> = booleanPreferencesKey("rest_timer_enabled")
         val RestTimerMode: Preferences.Key<String> = stringPreferencesKey("rest_timer_mode")
         val RestTimerOffsetSeconds: Preferences.Key<Int> = intPreferencesKey("rest_timer_offset_seconds")
+        val RestTimerNotificationsEnabled: Preferences.Key<Boolean> = booleanPreferencesKey("rest_timer_notifications_enabled")
+        val RestTimerBubbleEnabled: Preferences.Key<Boolean> = booleanPreferencesKey("rest_timer_bubble_enabled")
         val WorkoutTimerHiddenForSetId: Preferences.Key<Long> = longPreferencesKey("workout_timer_hidden_for_set_id")
         val ExerciseTimerHiddenForSetIds: Preferences.Key<Set<String>> = stringSetPreferencesKey("exercise_timer_hidden_for_set_ids")
         val StarterExercisesSeeded: Preferences.Key<Boolean> = booleanPreferencesKey("starter_exercises_seeded")

@@ -20,7 +20,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal object BackupJsonCodec {
-    private const val FormatVersion = 10
+    private const val FormatVersion = 11
 
     fun encode(backup: LiftLogBackup): String = JSONObject().apply {
         put("formatVersion", FormatVersion)
@@ -33,6 +33,8 @@ internal object BackupJsonCodec {
                 put("restTimerMode", settings.restTimerMode.name)
                 put("restTimerEnabled", settings.restTimerMode != RestTimerMode.Off)
                 put("restTimerOffsetSeconds", settings.restTimerOffsetSeconds)
+                put("restTimerNotificationsEnabled", settings.restTimerNotificationsEnabled)
+                put("restTimerBubbleEnabled", settings.restTimerBubbleEnabled)
             })
         }
         put("database", JSONObject().apply {
@@ -139,6 +141,8 @@ internal object BackupJsonCodec {
                     .let { value -> RestTimerMode.entries.firstOrNull { it.name == value } }
                     ?: if (settingsJson.optBoolean("restTimerEnabled", true)) RestTimerMode.Workout else RestTimerMode.Off,
                 restTimerOffsetSeconds = settingsJson.optInt("restTimerOffsetSeconds", 0).coerceIn(0, 600),
+                restTimerNotificationsEnabled = settingsJson.optBoolean("restTimerNotificationsEnabled", false),
+                restTimerBubbleEnabled = settingsJson.optBoolean("restTimerBubbleEnabled", true),
             )
         } else {
             null

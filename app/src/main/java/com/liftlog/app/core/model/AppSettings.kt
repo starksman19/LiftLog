@@ -5,6 +5,8 @@ data class AppSettings(
     val defaultRestSeconds: Int = 90,
     val restTimerMode: RestTimerMode = RestTimerMode.Workout,
     val restTimerOffsetSeconds: Int = 0,
+    val restTimerNotificationsEnabled: Boolean = false,
+    val restTimerBubbleEnabled: Boolean = true,
 )
 
 enum class RestTimerMode {

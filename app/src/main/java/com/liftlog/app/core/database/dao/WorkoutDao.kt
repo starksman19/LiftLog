@@ -55,6 +55,7 @@ interface WorkoutDao {
         SELECT we.id AS workoutExerciseId,
                we.exerciseId AS exerciseId,
                e.name AS name,
+               e.category AS category,
                e.primaryMuscle AS primaryMuscle,
                e.equipment AS equipment,
                we.orderIndex AS orderIndex,

@@ -227,6 +227,7 @@ class RoomWorkoutRepository @Inject constructor(
                     id = exerciseRow.workoutExerciseId,
                     exerciseId = exerciseRow.exerciseId,
                     name = exerciseRow.name,
+                    category = ExerciseCategory.valueOf(exerciseRow.category),
                     primaryMuscle = exerciseRow.primaryMuscle,
                     equipment = exerciseRow.equipment,
                     orderIndex = exerciseRow.orderIndex,

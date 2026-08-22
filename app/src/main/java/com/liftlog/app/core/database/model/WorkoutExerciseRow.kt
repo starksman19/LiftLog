@@ -4,6 +4,7 @@ data class WorkoutExerciseRow(
     val workoutExerciseId: Long,
     val exerciseId: Long,
     val name: String,
+    val category: String,
     val primaryMuscle: String,
     val equipment: String,
     val orderIndex: Int,

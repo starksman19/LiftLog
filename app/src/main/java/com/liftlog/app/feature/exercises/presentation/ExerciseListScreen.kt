@@ -307,7 +307,7 @@ internal fun CustomExerciseDialog(
                             onClick = { category = option },
                             shape = SegmentedButtonDefaults.itemShape(index, ExerciseCategory.entries.size),
                             label = {
-                                Text(t(if (option == ExerciseCategory.FreeWeights) "Free weights" else "Machine"))
+                                Text(option.localizedLabel())
                             },
                         )
                     }
@@ -363,6 +363,13 @@ internal fun CustomExerciseDialog(
             TextButton(onClick = onDismiss) { Text(t("Cancel")) }
         },
     )
+}
+
+@Composable
+private fun ExerciseCategory.localizedLabel(): String = when (this) {
+    ExerciseCategory.FreeWeights -> t("Free weights")
+    ExerciseCategory.Machine -> t("Machine")
+    ExerciseCategory.Timed -> t("Timed")
 }
 
 @Composable
@@ -469,6 +476,7 @@ private fun ExerciseCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 val details = listOf(
+                    exercise.category.localizedLabel(),
                     exercise.primaryMuscle,
                     exercise.equipment,
                 ).filter { it.isNotBlank() }.joinToString(" / ")

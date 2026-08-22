@@ -89,8 +89,8 @@ fun ExerciseHistoryScreen(
             }
         }
 
-        if (state.history.isNotEmpty()) {
-            item { ExerciseWeightChart(state.history) }
+        state.exercise?.takeIf { state.history.isNotEmpty() }?.let { exercise ->
+            item { ExerciseProgressChart(state.history, exercise.category) }
         }
 
         if (state.history.isEmpty()) {
@@ -106,16 +106,20 @@ fun ExerciseHistoryScreen(
                 items = state.history,
                 key = { session -> session.finishedAtEpochMillis },
             ) { session ->
-                HistorySessionCard(session = session)
+                HistorySessionCard(session = session, category = state.exercise?.category)
             }
         }
     }
 }
 
 @Composable
-private fun ExerciseWeightChart(history: List<ExerciseHistorySession>) {
+private fun ExerciseProgressChart(
+    history: List<ExerciseHistorySession>,
+    category: com.liftlog.app.core.model.ExerciseCategory,
+) {
+    val timed = category == com.liftlog.app.core.model.ExerciseCategory.Timed
     val points = history.asReversed().map { session ->
-        session.finishedAtEpochMillis to session.sets.maxOf { it.weight }
+        session.finishedAtEpochMillis to if (timed) session.sets.maxOf { it.reps.toDouble() } else session.sets.maxOf { it.weight }
     }
     val chartColor = MaterialTheme.colorScheme.primary
     Card(
@@ -124,7 +128,13 @@ private fun ExerciseWeightChart(history: List<ExerciseHistorySession>) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(t("Best weight progression", "Postęp najlepszego ciężaru"), fontWeight = FontWeight.SemiBold)
+            Text(
+                t(
+                    if (timed) "Best time progression" else "Best weight progression",
+                    if (timed) "Postęp najlepszego czasu" else "Postęp najlepszego ciężaru",
+                ),
+                fontWeight = FontWeight.SemiBold,
+            )
             Canvas(modifier = Modifier.fillMaxWidth().height(132.dp)) {
                 if (points.isEmpty()) return@Canvas
                 val left = 4.dp.toPx()
@@ -133,8 +143,8 @@ private fun ExerciseWeightChart(history: List<ExerciseHistorySession>) {
                 val bottom = size.height - 4.dp.toPx()
                 val max = points.maxOf { it.second }.coerceAtLeast(1.0)
                 val step = if (points.size == 1) 0f else (right - left) / (points.size - 1)
-                val offsets = points.mapIndexed { index, (_, weight) ->
-                    androidx.compose.ui.geometry.Offset(left + step * index, bottom - ((weight / max).toFloat() * (bottom - top)))
+                val offsets = points.mapIndexed { index, (_, value) ->
+                    androidx.compose.ui.geometry.Offset(left + step * index, bottom - ((value / max).toFloat() * (bottom - top)))
                 }
                 val path = Path().apply {
                     moveTo(offsets.first().x, offsets.first().y)
@@ -143,7 +153,13 @@ private fun ExerciseWeightChart(history: List<ExerciseHistorySession>) {
                 drawPath(path, color = chartColor, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
                 offsets.forEach { drawCircle(chartColor, 4.dp.toPx(), it) }
             }
-            Text(t("Latest best: ${points.last().second.compact()} kg", "Najnowszy rekord: ${points.last().second.compact()} kg"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                t(
+                    if (timed) "Latest best: ${points.last().second.toInt()} s" else "Latest best: ${points.last().second.compact()} kg",
+                    if (timed) "Najnowszy rekord: ${points.last().second.toInt()} s" else "Najnowszy rekord: ${points.last().second.compact()} kg",
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -177,7 +193,15 @@ private fun ExerciseInformationCard(
             if (details.isNotBlank()) {
                 Text(details, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(t(if (exercise.category == com.liftlog.app.core.model.ExerciseCategory.Machine) "Machine" else "Free weights"))
+            Text(
+                t(
+                    when (exercise.category) {
+                        com.liftlog.app.core.model.ExerciseCategory.FreeWeights -> "Free weights"
+                        com.liftlog.app.core.model.ExerciseCategory.Machine -> "Machine"
+                        com.liftlog.app.core.model.ExerciseCategory.Timed -> "Timed"
+                    },
+                ),
+            )
             image?.let {
                 Image(
                     bitmap = it,
@@ -198,6 +222,7 @@ private fun ExerciseInformationCard(
 @Composable
 private fun HistorySessionCard(
     session: ExerciseHistorySession,
+    category: com.liftlog.app.core.model.ExerciseCategory?,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -221,7 +246,11 @@ private fun HistorySessionCard(
                 ) {
                     Text(t("Set ${set.setNumber}", "Seria ${set.setNumber}"))
                     Text(
-                        text = "${set.weight.compact()} kg x ${set.reps}",
+                        text = if (category == com.liftlog.app.core.model.ExerciseCategory.Timed) {
+                            "${set.weight.compact()} kg x ${set.reps} ${t("seconds") }"
+                        } else {
+                            "${set.weight.compact()} kg x ${set.reps}"
+                        },
                         fontWeight = FontWeight.Medium,
                     )
                 }

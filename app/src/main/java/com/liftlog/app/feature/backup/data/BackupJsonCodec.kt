@@ -20,7 +20,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal object BackupJsonCodec {
-    private const val FormatVersion = 8
+    private const val FormatVersion = 9
 
     fun encode(backup: LiftLogBackup): String = JSONObject().apply {
         put("formatVersion", FormatVersion)

@@ -62,6 +62,9 @@ class DebugDemoDataSeeder @Inject constructor(
         val curl = exerciseDao.insertExerciseWithSearch(
             ExerciseEntity(name = "Demo Dumbbell Curl", primaryMuscle = "Biceps", equipment = "Dumbbells", category = ExerciseCategory.FreeWeights.name, createdAtEpochMillis = now),
         )
+        val plank = exerciseDao.insertExerciseWithSearch(
+            ExerciseEntity(name = "Demo Weighted Plank", primaryMuscle = "Core", equipment = "Mat", category = ExerciseCategory.Timed.name, createdAtEpochMillis = now),
+        )
 
         val upperPlanId = templateDao.insertPlan(WorkoutPlanEntity(name = "Demo Upper Strength", createdAtEpochMillis = now))
         val fullBodyPlanId = templateDao.insertPlan(WorkoutPlanEntity(name = "Demo Full Body", createdAtEpochMillis = now))
@@ -82,6 +85,7 @@ class DebugDemoDataSeeder @Inject constructor(
             benchPress to listOf(75.0 to 8, 77.5 to 7, 80.0 to 5),
             press to listOf(35.0 to 12, 35.0 to 10),
             squat to listOf(85.0 to 8, 90.0 to 5),
+            plank to listOf(0.0 to 45, 0.0 to 50),
         ))
     }
 

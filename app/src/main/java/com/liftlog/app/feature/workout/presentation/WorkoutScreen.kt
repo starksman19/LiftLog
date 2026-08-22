@@ -52,8 +52,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -774,6 +776,7 @@ private fun ExercisePickerScreen(
                         Column(modifier = Modifier.padding(start = 8.dp)) {
                             Text(exercise.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             val details = listOf(
+                                exercise.category.localizedLabel(),
                                 exercise.primaryMuscle,
                                 exercise.equipment,
                             ).filter { it.isNotBlank() }.joinToString(" / ")
@@ -803,6 +806,13 @@ private fun ExercisePickerScreen(
             },
         )
     }
+}
+
+@Composable
+private fun ExerciseCategory.localizedLabel(): String = when (this) {
+    ExerciseCategory.FreeWeights -> t("Free weights")
+    ExerciseCategory.Machine -> t("Machine")
+    ExerciseCategory.Timed -> t("Timed")
 }
 
 @Composable
@@ -852,7 +862,7 @@ internal fun LoggedExerciseCard(
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
-                    val details = listOf(exercise.primaryMuscle, exercise.equipment)
+                    val details = listOf(exercise.category.localizedLabel(), exercise.primaryMuscle, exercise.equipment)
                         .filter { it.isNotBlank() }
                         .joinToString(" / ")
                     if (details.isNotBlank()) {
@@ -925,8 +935,9 @@ internal fun LoggedExerciseCard(
                     val previous = exercise.sets.lastOrNull()
                     editor = SetEditor(
                         setEntryId = null,
+                        category = exercise.category,
                         initialWeight = previous?.weight ?: 0.0,
-                        initialReps = previous?.reps ?: 10,
+                        initialReps = previous?.reps ?: if (exercise.category == ExerciseCategory.Timed) 0 else 10,
                     )
                 },
                 modifier = Modifier.fillMaxWidth().height(40.dp),
@@ -953,9 +964,11 @@ internal fun LoggedExerciseCard(
                 exercise.sets.forEach { set ->
                     SetRow(
                         set = set,
+                        category = exercise.category,
                         onEdit = {
                             editor = SetEditor(
                                 setEntryId = set.id,
+                                category = exercise.category,
                                 initialWeight = set.weight,
                                 initialReps = set.reps,
                             )
@@ -1065,7 +1078,10 @@ private fun ExerciseHistoryDialog(
                             }
                             performance.sets.forEach { set ->
                                 Text(
-                                    t("Set ${set.setNumber}: ${set.weight.clean()} kg x ${set.reps}", "Seria ${set.setNumber}: ${set.weight.clean()} kg x ${set.reps}"),
+                                    t(
+                                        "Set ${set.setNumber}: ${set.weight.clean()} kg x ${set.metricText(performance.category)}",
+                                        "Seria ${set.setNumber}: ${set.weight.clean()} kg x ${set.metricText(performance.category)}",
+                                    ),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
@@ -1105,6 +1121,7 @@ private fun ExerciseNotesDialog(
 @Composable
 private fun SetRow(
     set: LoggedSet,
+    category: ExerciseCategory,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -1119,7 +1136,7 @@ private fun SetRow(
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "${set.weight.clean()} kg x ${set.reps}",
+                text = "${set.weight.clean()} kg x ${set.metricText(category)}",
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
             )
@@ -1156,14 +1173,16 @@ private fun SetEditorDialog(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(t("Weight (kg)")) },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = weight.isNotBlank() && (parsedWeight == null || parsedWeight < 0),
                 )
                 OutlinedTextField(
                     value = reps,
                     onValueChange = { reps = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(t("Reps")) },
+                    label = { Text(editor.category.metricLabel()) },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     isError = reps.isNotBlank() && (parsedReps == null || parsedReps <= 0),
                 )
             }
@@ -1182,9 +1201,18 @@ private fun SetEditorDialog(
 
 private data class SetEditor(
     val setEntryId: Long?,
+    val category: ExerciseCategory,
     val initialWeight: Double,
     val initialReps: Int,
 )
+
+@Composable
+private fun ExerciseCategory.metricLabel(): String =
+    if (this == ExerciseCategory.Timed) t("Time (seconds)") else t("Reps")
+
+@Composable
+private fun LoggedSet.metricText(category: ExerciseCategory): String =
+    if (category == ExerciseCategory.Timed) "${reps} ${t("seconds")}" else reps.toString()
 
 private fun Double.clean(): String {
     return if (this % 1.0 == 0.0) {
@@ -1210,6 +1238,7 @@ private fun WorkoutScreenPreview() {
                             id = 1,
                             exerciseId = 1,
                             name = "Bench Press",
+                            category = ExerciseCategory.FreeWeights,
                             primaryMuscle = "Chest",
                             equipment = "Barbell",
                             orderIndex = 0,

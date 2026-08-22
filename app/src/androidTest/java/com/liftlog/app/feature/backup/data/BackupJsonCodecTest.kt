@@ -96,6 +96,44 @@ class BackupJsonCodecTest {
     }
 
     @Test
+    fun roundTripPreservesTimedExerciseCategory() {
+        val backup = LiftLogBackup(
+            exportedAtEpochMillis = 1L,
+            settings = null,
+            selection = BackupSelection(
+                settings = false,
+                locations = false,
+                exercises = true,
+                workoutSessions = false,
+                workoutExercises = false,
+                setEntries = false,
+                workoutTemplates = false,
+            ),
+            snapshot = DatabaseSnapshot(
+                exercises = listOf(
+                    ExerciseEntity(
+                        id = 1L,
+                        name = "Plank",
+                        primaryMuscle = "Core",
+                        equipment = "",
+                        category = ExerciseCategory.Timed.name,
+                        createdAtEpochMillis = 1L,
+                    ),
+                ),
+                workoutSessions = emptyList(),
+                workoutExercises = emptyList(),
+                setEntries = emptyList(),
+                workoutTemplates = emptyList(),
+                workoutTemplateExercises = emptyList(),
+            ),
+        )
+
+        val restored = BackupJsonCodec.decode(BackupJsonCodec.encode(backup))
+
+        assertEquals(ExerciseCategory.Timed.name, restored.snapshot.exercises.single().category)
+    }
+
+    @Test
     fun backupKeepsTemplatesAndTheirExerciseReferences() {
         val exercise = ExerciseEntity(
             id = 7,

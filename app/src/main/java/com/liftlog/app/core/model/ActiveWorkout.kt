@@ -12,6 +12,7 @@ data class LoggedExercise(
     val id: Long,
     val exerciseId: Long,
     val name: String,
+    val category: ExerciseCategory,
     val primaryMuscle: String,
     val equipment: String,
     val orderIndex: Int,

@@ -22,14 +22,25 @@ class ExerciseMutationUseCaseTest {
     }
 
     @Test
-    fun `updating a machine keeps its required gym location`() = runTest {
+    fun `updating an exercise clears its obsolete per-exercise location`() = runTest {
         val repository = FakeExerciseRepository()
         val draft = ExerciseDraft("Leg Press", "Legs", "Machine", ExerciseCategory.Machine, "Main Gym", null, null)
 
         UpdateExerciseUseCase(repository)(12, draft)
 
         assertEquals(12L, repository.updatedId)
-        assertEquals("Main Gym", repository.updatedDraft?.gymLocation)
+        assertEquals(null, repository.updatedDraft?.gymLocation)
+    }
+
+    @Test
+    fun `adding a timed exercise preserves its category`() = runTest {
+        val repository = FakeExerciseRepository()
+
+        AddCustomExerciseUseCase(repository)(
+            ExerciseDraft("Plank", "Core", "", ExerciseCategory.Timed, null, null, null),
+        )
+
+        assertEquals(ExerciseCategory.Timed, repository.addedDraft?.category)
     }
 
     @Test

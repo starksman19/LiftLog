@@ -63,11 +63,14 @@ internal object TrainingReportWorkbook {
     private fun summarySheet(report: TrainingReportData, labels: ReportLabels): String {
         val allExercises = report.workouts.flatMap { it.exercises }
         val allSets = allExercises.flatMap { it.sets }
-        val totalVolume = allSets.sumOf { it.weight * it.reps }
+        val totalVolume = allExercises.sumOf { exercise -> exercise.trainingVolume() }
         val averageVolume = if (report.workouts.isEmpty()) 0.0 else totalVolume / report.workouts.size
-        val bestSet = allExercises.flatMap { exercise ->
+        val bestSet = allExercises.filter { it.category != "Timed" }.flatMap { exercise ->
             exercise.sets.map { set -> exercise.name to set }
         }.maxByOrNull { (_, set) -> set.weight }
+        val bestTimedSet = allExercises.filter { it.category == "Timed" }.flatMap { exercise ->
+            exercise.sets.map { set -> exercise.name to set }
+        }.maxByOrNull { (_, set) -> set.reps }
 
         return sheetXml(
             rows = listOf(
@@ -84,6 +87,10 @@ internal object TrainingReportWorkbook {
                 listOf(
                     Cell.Text(labels.bestWeight, style = 2),
                     Cell.Text(bestSet?.let { (name, set) -> "$name: ${set.weight.numberText()} kg x ${set.reps}" }.orEmpty()),
+                ),
+                listOf(
+                    Cell.Text(labels.longestTime, style = 2),
+                    Cell.Text(bestTimedSet?.let { (name, set) -> labels.timedSetText(name, set) }.orEmpty()),
                 ),
             ),
             widths = listOf(30.0, 38.0),
@@ -104,7 +111,7 @@ internal object TrainingReportWorkbook {
                         Cell.Text(workout.gymLocation.orEmpty()),
                         Cell.Number(workout.exercises.size.toDouble()),
                         Cell.Number(sets.size.toDouble()),
-                        Cell.Number(sets.sumOf { it.weight * it.reps }),
+                        Cell.Number(workout.exercises.sumOf { it.trainingVolume() }),
                         Cell.Text(workout.notes.orEmpty()),
                     ),
                 )
@@ -124,11 +131,11 @@ internal object TrainingReportWorkbook {
                             Cell.Text(workout.finishedAtEpochMillis.dateText()),
                             Cell.Number(workout.id.toDouble()),
                             Cell.Text(exercise.name),
-                            Cell.Text(exercise.category),
+                            Cell.Text(labels.categoryText(exercise.category)),
                             Cell.Text(exercise.primaryMuscle),
                             Cell.Text(exercise.equipment),
                             Cell.Number(sets.size.toDouble()),
-                            Cell.Number(sets.sumOf { it.weight * it.reps }),
+                            Cell.Number(exercise.trainingVolume()),
                             Cell.Number(sets.maxOfOrNull { it.weight } ?: 0.0),
                             Cell.Number(sets.maxOfOrNull { it.reps }?.toDouble() ?: 0.0),
                             Cell.Text(exercise.notes.orEmpty()),
@@ -154,7 +161,7 @@ internal object TrainingReportWorkbook {
                                 Cell.Number(set.number.toDouble()),
                                 Cell.Number(set.weight),
                                 Cell.Number(set.reps.toDouble()),
-                                Cell.Number(set.weight * set.reps),
+                                Cell.Number(if (exercise.category == "Timed") 0.0 else set.weight * set.reps),
                                 Cell.Text(set.completedAtEpochMillis.dateTimeText()),
                                 Cell.Text(workout.gymLocation.orEmpty()),
                                 Cell.Text(workout.notes.orEmpty()),
@@ -311,6 +318,9 @@ internal object TrainingReportWorkbook {
         .atZone(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
 
+    private fun TrainingReportExercise.trainingVolume(): Double =
+        if (category == "Timed") 0.0 else sets.sumOf { it.weight * it.reps }
+
     private class ReportLabels(language: AppLanguage) {
         private val polish = language == AppLanguage.Polish
 
@@ -324,24 +334,33 @@ internal object TrainingReportWorkbook {
         val totalVolume = if (polish) "Łączna objętość (kg)" else "Total volume (kg)"
         val averageWorkoutVolume = if (polish) "Średnia objętość treningu (kg)" else "Average workout volume (kg)"
         val bestWeight = if (polish) "Największy ciężar" else "Best weight"
+        val longestTime = if (polish) "Najdłuższy czas serii" else "Longest set time"
         val summarySheet = if (polish) "Podsumowanie" else "Summary"
         val workoutsSheet = if (polish) "Treningi" else "Workouts"
         val exercisesSheet = if (polish) "Ćwiczenia" else "Exercises"
         val setsSheet = if (polish) "Serie" else "Sets"
+        fun categoryText(category: String): String = when (category) {
+            "FreeWeights" -> if (polish) "Wolne ciężary" else "Free weights"
+            "Machine" -> if (polish) "Maszyna" else "Machine"
+            "Timed" -> if (polish) "Na czas" else "Timed"
+            else -> category
+        }
+        fun timedSetText(name: String, set: TrainingReportSet): String =
+            if (polish) "$name: ${set.reps} s przy ${set.weight.numberText()} kg" else "$name: ${set.reps} s at ${set.weight.numberText()} kg"
         val workoutHeaders = if (polish) {
             listOf("Data", "Rozpoczęto", "Zakończono", "Lokalizacja", "Ćwiczenia", "Serie", "Objętość (kg)", "Notatki treningu")
         } else {
             listOf("Date", "Started", "Finished", "Location", "Exercises", "Sets", "Volume (kg)", "Workout notes")
         }
         val exerciseHeaders = if (polish) {
-            listOf("Data", "ID treningu", "Ćwiczenie", "Rodzaj", "Partia mięśniowa", "Sprzęt", "Serie", "Objętość (kg)", "Największy ciężar (kg)", "Najwięcej powtórzeń", "Notatki ćwiczenia")
+            listOf("Data", "ID treningu", "Ćwiczenie", "Rodzaj", "Partia mięśniowa", "Sprzęt", "Serie", "Objętość (kg)", "Największy ciężar (kg)", "Najwięcej powtórzeń / czas (s)", "Notatki ćwiczenia")
         } else {
-            listOf("Date", "Workout ID", "Exercise", "Type", "Primary muscle", "Equipment", "Sets", "Volume (kg)", "Best weight (kg)", "Best reps", "Exercise notes")
+            listOf("Date", "Workout ID", "Exercise", "Type", "Primary muscle", "Equipment", "Sets", "Volume (kg)", "Best weight (kg)", "Best reps / time (s)", "Exercise notes")
         }
         val setHeaders = if (polish) {
-            listOf("Data", "ID treningu", "Ćwiczenie", "Nr serii", "Ciężar (kg)", "Powtórzenia", "Objętość (kg)", "Zapisano", "Lokalizacja", "Notatki treningu", "Notatki ćwiczenia")
+            listOf("Data", "ID treningu", "Ćwiczenie", "Nr serii", "Ciężar (kg)", "Powtórzenia / czas (s)", "Objętość (kg)", "Zapisano", "Lokalizacja", "Notatki treningu", "Notatki ćwiczenia")
         } else {
-            listOf("Date", "Workout ID", "Exercise", "Set no.", "Weight (kg)", "Reps", "Volume (kg)", "Recorded", "Location", "Workout notes", "Exercise notes")
+            listOf("Date", "Workout ID", "Exercise", "Set no.", "Weight (kg)", "Reps / time (s)", "Volume (kg)", "Recorded", "Location", "Workout notes", "Exercise notes")
         }
     }
 }

@@ -41,9 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -300,14 +298,21 @@ internal fun CustomExerciseDialog(
                     text = t("Exercise type"),
                     style = MaterialTheme.typography.labelLarge,
                 )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    ExerciseCategory.entries.forEachIndexed { index, option ->
-                        SegmentedButton(
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ExerciseCategory.entries.forEach { option ->
+                        FilterChip(
                             selected = category == option,
                             onClick = { category = option },
-                            shape = SegmentedButtonDefaults.itemShape(index, ExerciseCategory.entries.size),
+                            modifier = Modifier.weight(1f),
                             label = {
-                                Text(option.localizedLabel())
+                                Text(
+                                    text = option.localizedLabel(),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
                             },
                         )
                     }
